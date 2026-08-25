@@ -1612,3 +1612,127 @@ setInterval(() => {
         updateClockDisplay();
     }
 }, 1000);
+
+// --- CHEESE-KNIFE FEATURES INTEGRATION ---
+(async function initCheeseKnifeFeatures() {
+    const api = globalThis.browser ?? globalThis.chrome;
+    if (!api) return;
+
+    const featureDefaults = { audioCompressor: false, arrowSeek: true, videoFilters: false, hideDonation: false, chatFontSizeEnabled: false, sidebarRefresh: true, hoverPreview: true };
+    const trendDefaults = { brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
+
+    const { features = {} } = await api.storage.local.get("features");
+    const { trendOptions = {} } = await api.storage.local.get("trendOptions");
+    const mergedFeatures = { ...featureDefaults, ...features };
+    const mergedTrends = { ...trendDefaults, ...trendOptions };
+
+    // 1. Audio Compressor
+    if (mergedFeatures.audioCompressor) {
+        let compressorAttached = false;
+        setInterval(() => {
+            if (compressorAttached) return;
+            const video = document.querySelector('video');
+            if (video) {
+                try {
+                    // Try to attach compressor. Note: Might fail if cross-origin isn't set, but page.js helps bypass.
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    const ctx = new AudioContext();
+                    const source = ctx.createMediaElementSource(video);
+                    const compressor = ctx.createDynamicsCompressor();
+                    compressor.threshold.value = -30;
+                    compressor.knee.value = 10;
+                    compressor.ratio.value = 12;
+                    compressor.attack.value = 0;
+                    compressor.release.value = 0.25;
+                    source.connect(compressor);
+                    compressor.connect(ctx.destination);
+                    compressorAttached = true;
+                    console.log("[치지직 올인원] 오디오 컴프레서 활성화됨");
+                } catch(e) { }
+            }
+        }, 3000);
+    }
+
+    // 2. Video Filters (Brightness, Contrast)
+    if (mergedFeatures.videoFilters) {
+        const style = document.createElement("style");
+        style.id = "hanbi-video-filters";
+        style.textContent = `
+            video {
+                filter: brightness(${mergedTrends.brightnessAmount}%) contrast(${mergedTrends.contrastAmount}%) !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // 3. Arrow Seek
+    if (mergedFeatures.arrowSeek) {
+        document.addEventListener("keydown", (e) => {
+            if (["input", "textarea"].includes(e.target.tagName.toLowerCase())) return;
+            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                const video = document.querySelector("video");
+                if (video && video.duration) {
+                    const delta = e.key === "ArrowLeft" ? -5 : 5;
+                    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta));
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+
+    // 4. Hide Donation & Font Size
+    const chatStyle = document.createElement("style");
+    chatStyle.id = "hanbi-chat-improvements";
+    let chatCss = "";
+    if (mergedFeatures.hideDonation) {
+        chatCss += `div[class*="live_chatting_list_donation_"] { display: none !important; }\n`;
+    }
+    if (mergedFeatures.chatFontSizeEnabled) {
+        chatCss += `span[class*="live_chatting_message_text"] { font-size: ${mergedTrends.chatFontSize}px !important; }\n`;
+    }
+    if (chatCss) {
+        chatStyle.textContent = chatCss;
+        document.head.appendChild(chatStyle);
+    }
+
+    // 5. Sidebar Refresh
+    if (mergedFeatures.sidebarRefresh) {
+        setInterval(() => {
+            const refreshBtn = document.querySelector('button[class*="navigator_button_refresh__"]');
+            if (refreshBtn) refreshBtn.click();
+        }, 30 * 1000);
+    }
+
+    // 6. Hover Preview (Sidebar)
+    if (mergedFeatures.hoverPreview) {
+        document.addEventListener("mouseover", (e) => {
+            const link = e.target.closest('a[href^="/live/"]');
+            if (!link || !link.closest('nav')) return;
+            let tooltip = document.getElementById("hanbi-sidebar-hover-preview");
+            if (!tooltip) {
+                tooltip = document.createElement("div");
+                tooltip.id = "hanbi-sidebar-hover-preview";
+                tooltip.style.cssText = "position: fixed; z-index: 99999; width: 320px; background: #141517; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #2d303a; overflow: hidden; pointer-events: none; display: none; color: #fff;";
+                const img = document.createElement("img");
+                img.style.cssText = "width: 100%; height: auto; display: block; background: #000;";
+                tooltip.appendChild(img);
+                document.body.appendChild(tooltip);
+            }
+            const channelId = link.getAttribute('href').split('/').pop();
+            const previewImg = tooltip.querySelector('img');
+            // Cache buster for live thumb
+            previewImg.src = `https://livecloud.pstatic.net/api/v1/stream/${channelId}/thumbnail?_=${Date.now()}`;
+            
+            const rect = link.getBoundingClientRect();
+            tooltip.style.left = `${rect.right + 10}px`;
+            tooltip.style.top = `${rect.top}px`;
+            tooltip.style.display = "block";
+            
+            link.addEventListener("mouseleave", () => {
+                tooltip.style.display = "none";
+                previewImg.src = "";
+            }, { once: true });
+        });
+    }
+
+})();

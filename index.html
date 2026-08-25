@@ -62,15 +62,31 @@
   <h2>스트리밍 최적화</h2>
   <div class="card">
     <label>GRID 강제 우회 (P2P 차단) <input type="checkbox" data-feature="gridBypass"></label>
+    <label>오디오 컴프레서 (소리 정규화) <input type="checkbox" data-feature="audioCompressor"></label>
+    <label>방향키 탐색 (5초 앞뒤 이동) <input type="checkbox" data-feature="arrowSeek"></label>
     <label>스크린샷 툴 <input type="checkbox" data-feature="screenshot"></label>
     <label>녹화 툴 <input type="checkbox" data-feature="recorder"></label>
     <label>자동 음소거 해제 <input type="checkbox" data-feature="autoUnmute"></label>
     <label>광고·치트키 안내 팝업 제거 <input type="checkbox" data-feature="hideAdPopup"></label>
-    <label>블라인드 채팅 원본 복구 <input type="checkbox" data-feature="blindRestore"></label>
-    <label>화면 선명도 (샤픈) 필터 <input type="checkbox" data-feature="sharpness"></label>
-    <div class="subsettings" id="sharpnessSettings">
+    
+    <label>영상 필터 (밝기/대비/선명도) <input type="checkbox" data-feature="videoFilters"></label>
+    <div class="subsettings" id="videoFilterSettings">
+      <label>밝기 (%) <input type="number" min="50" max="200" step="10" data-trend-option="brightnessAmount"></label>
+      <label>대비 (%) <input type="number" min="50" max="200" step="10" data-trend-option="contrastAmount"></label>
       <label>선명도 강도 (%) <input type="number" min="0" max="300" step="10" data-trend-option="sharpnessAmount"></label>
     </div>
+  </div>
+
+  <h2>채팅 및 탐색 개선</h2>
+  <div class="card">
+    <label>블라인드 채팅 원본 복구 <input type="checkbox" data-feature="blindRestore"></label>
+    <label>치즈 후원 채팅 숨기기 <input type="checkbox" data-feature="hideDonation"></label>
+    <label>채팅창 글자 크기 강제 조절 <input type="checkbox" data-feature="chatFontSizeEnabled"></label>
+    <div class="subsettings" id="chatFontSettings">
+      <label>글자 크기 (px) <input type="number" min="10" max="30" step="1" data-trend-option="chatFontSize"></label>
+    </div>
+    <label>팔로잉 사이드바 자동 갱신 <input type="checkbox" data-feature="sidebarRefresh"></label>
+    <label>마우스 오버 방송 미리보기 <input type="checkbox" data-feature="hoverPreview"></label>
   </div>
 
   <h2>방송 알림 & 트렌드</h2>

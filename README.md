@@ -22,11 +22,5 @@
 4. 좌측 상단의 **'압축해제된 확장 프로그램 로드'** (Firefox는 '임시 부가 기능 로드')를 클릭합니다.
 5. 압축을 푼 폴더(manifest.json이 포함된 폴더)를 선택하면 설치가 완료됩니다.
 
-## 🤝 감사한 분들 (Credits)
-이 확장 프로그램은 아래의 오픈소스 스크립트를 기반으로 하나로 통합 및 리팩토링되어 만들어졌습니다. 
-*   [FUCK-CHZZK-GRID](https://github.com/bass9030/FUCK-CHZZK-GRID) - 그리드/P2P 우회 및 1080p 고정 
-*   [chzzk_auto_log_power](https://github.com/bytecakelake/chzzk_auto_log_power) - 백그라운드 API 호출을 통한 파워(통나무) 자동 획득 로직
-*   [Cheese-PIP](https://github.com/khk4912/Cheese-PIP) - 네이티브 PIP 버튼 활성화
-
 ## 📄 라이선스 (License)
 MIT License (이 프로젝트는 MIT 라이선스를 따릅니다)

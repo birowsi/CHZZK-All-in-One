@@ -9,8 +9,15 @@ const featureDefaults = {
   trends: true,
   gridBypass: true,
   sharpness: false,
+  audioCompressor: false,
+  arrowSeek: true,
+  videoFilters: false,
+  hideDonation: false,
+  chatFontSizeEnabled: false,
+  sidebarRefresh: true,
+  hoverPreview: true,
 };
-const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100 };
+const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100, brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
 const powerSettings = {
   toggle: ["badge", "updateBadgeToggle", "badgeToggle", true],
   clockToggle: ["clockToggle", "updateClockToggle", "clockToggle", false],
