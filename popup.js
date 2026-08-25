@@ -72,6 +72,7 @@ async function init() {
 
   const { powerLogs = [], lastPowerAcquisitionTime } = await api.storage.local.get(["powerLogs", "lastPowerAcquisitionTime"]);
   updateNextPowerTime(powerLogs, lastPowerAcquisitionTime);
+  setInterval(() => updateNextPowerTime(powerLogs, lastPowerAcquisitionTime), 1000);
   document.getElementById("viewLogs").addEventListener("click", () => api.tabs.create({ url: api.runtime.getURL("log.html") }));
   document.getElementById("testFollowingAlert").addEventListener("click", async () => {
     const status = document.getElementById("popupStatus");

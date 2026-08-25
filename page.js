@@ -49,6 +49,10 @@
       playback.meta.p2p = false;
       changed = true;
     }
+    if (playback?.live && playback.live.timeMachine !== true) {
+      playback.live.timeMachine = true;
+      changed = true;
+    }
     for (const media of playback?.media || []) {
       for (const track of media?.encodingTrack || []) {
         for (const key of ["p2pPath", "p2pPathUrlEncoding"]) {
@@ -69,6 +73,10 @@
 
     if (Object.prototype.hasOwnProperty.call(value, "dab") && value.dab !== false) {
       value.dab = false;
+      changed = true;
+    }
+    if (Object.prototype.hasOwnProperty.call(value, "timeMachine") && value.timeMachine !== true) {
+      value.timeMachine = true;
       changed = true;
     }
     if (Array.isArray(value.p2pQuality) && value.p2pQuality.length) {

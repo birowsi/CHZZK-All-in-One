@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "author": "hanbi",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "scripts": {
     "test": "node --test"
   },

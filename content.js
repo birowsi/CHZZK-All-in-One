@@ -1179,10 +1179,10 @@ async function updateClockDisplay() {
 
 // 시계 뱃지 생성 함수
 function createClockBadge(timeText) {
-    // 기존 시계 뱃지 제거
     if (lastClockNode && lastClockNode.parentNode) {
-        lastClockNode.parentNode.removeChild(lastClockNode);
-        lastClockNode = null;
+        const span = lastClockNode.querySelector("span");
+        if (span) span.textContent = timeText;
+        return;
     }
 
     // 파워 뱃지가 있는지 확인하고 그 오른쪽에 시계 배치
@@ -1608,8 +1608,7 @@ setInterval(() => {
     if (!badgeExists) {
         updatePowerCountBadge();
     }
-    const clockExists = document.querySelector(".chzzk_clock_badge");
-    if (!clockExists && clockToggle) {
+    if (clockToggle) {
         updateClockDisplay();
     }
 }, 1000);
