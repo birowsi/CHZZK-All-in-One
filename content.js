@@ -12,6 +12,32 @@ let lastViewLogTimestampMs = null; // 최근 view 로그 기록 시각 (메모�
 let lastClockNode = null; // 시계 UI 노드 참조
 let powerSummaryToggle = false; // 통나무 개수 요약 표시 토글
 
+function setSafeHtml(element, html) {
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    parsed.querySelectorAll("script, iframe, object, embed").forEach((node) => node.remove());
+    parsed.querySelectorAll("*").forEach((node) => {
+        for (const attribute of [...node.attributes]) {
+            if (attribute.name.toLowerCase().startsWith("on")) node.removeAttribute(attribute.name);
+        }
+    });
+    element.replaceChildren(...parsed.body.childNodes);
+}
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[char]);
+}
+
+function safeImageUrl(value, fallback) {
+    try {
+        const url = new URL(value || fallback);
+        return ["https:", "data:"].includes(url.protocol) ? escapeHtml(url.href) : escapeHtml(fallback);
+    } catch (_) {
+        return escapeHtml(fallback);
+    }
+}
+
 // gif 프로필 URL에서 type 파라미터의 "_na" 만 제거
 function normalizeGifProfileUrl(url) {
     if (!url || typeof url !== "string") return url;
@@ -742,9 +768,9 @@ function createPowerBadge(amount, isInactive) {
         badge.style.cursor = "pointer";
         badge.style.background = colors.bg;
     });
-    badge.innerHTML = `${POWER_ICON_SVG}<span style="margin-left:4px;vertical-align:middle;">${formatPowerAmount(
+    setSafeHtml(badge, `${POWER_ICON_SVG}<span style="margin-left:4px;vertical-align:middle;">${formatPowerAmount(
         amount
-    )}<\/span>`;
+    )}<\/span>`);
     badge.classList.add("chzzk_power_badge");
     // 라이트 모드에서 아이콘 색상은 텍스트 색상과 동기화
     const svg = badge.querySelector("svg");
@@ -923,7 +949,7 @@ function createPowerBadge(amount, isInactive) {
                         (sum, x) => sum + x.amount,
                         0
                     );
-                    table.innerHTML = `
+                    setSafeHtml(table, `
             <div style="font-weight:bold;font-size:19px;margin-bottom:4px;">누적 파워: ${totalPower.toLocaleString()}</div>
             <div style="font-weight:bold;font-size:17px;margin-bottom:8px;">채널별 통나무 파워</div>
             <div style="color:#aaa;font-size:12px;margin-bottom:16px;">100 파워 이상 보유한 채널만 표시합니다.<br>비활성화 된 채널은 회색으로 표시됩니다.</div>
@@ -937,13 +963,13 @@ function createPowerBadge(amount, isInactive) {
                         x.active ? "#2a6aff" : "#666"
                     };font-size:17px;\">${i + 1}</span>
                     <img src=\"${
-                        x.channelImageUrl ? x.channelImageUrl : defaultImg
+                        safeImageUrl(x.channelImageUrl, defaultImg)
                     }\" alt=\"\" style=\"width:36px;height:36px;border-radius:50%;object-fit:cover;background:#222;opacity:${
                           x.active ? "1" : "0.5"
                       };\">
                     <span style=\"font-weight:bold;font-size:15px;white-space:normal;word-break:break-all;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;color:${
                         x.active ? "inherit" : "#666"
-                    };\">${x.channelName}${
+                    };\">${escapeHtml(x.channelName)}${
                           x.verifiedMark
                               ? ` <img src='https://ssl.pstatic.net/static/nng/glive/image/icon_official_mark.png' alt='인증' style='width:16px;height:16px;vertical-align:middle;margin-left:2px;'>`
                               : ""
@@ -957,7 +983,7 @@ function createPowerBadge(amount, isInactive) {
                   )
                   .join("")}
             </div>
-          `;
+          `);
                     popupContainer.appendChild(table);
                 })
                 .catch((err) => {
@@ -1191,7 +1217,7 @@ function createClockBadge(timeText) {
         clockBadge.style.cursor = "pointer";
         clockBadge.style.background = colors.bg;
     });
-    clockBadge.innerHTML = `${CLOCK_ICON_SVG}<span style="margin-left:4px;vertical-align:middle;">${timeText}</span>`;
+    setSafeHtml(clockBadge, `${CLOCK_ICON_SVG}<span style="margin-left:4px;vertical-align:middle;">${escapeHtml(timeText)}</span>`);
     clockBadge.classList.add("chzzk_clock_badge");
     // 라이트 모드에서 아이콘 색상은 텍스트 색상과 동기화
     const svg = clockBadge.querySelector("svg");

@@ -1,33 +1,83 @@
 {
-    "manifest_version": 3,
-    "name": "치지직 통나무 파워 자동 획득",
-    "version": "1.3.0",
-    "description": "치지직 파워(통나무) 자동 획득 및 파워 개수 표시",
-    "content_scripts": [
-        {
-            "matches": [
-                "https://chzzk.naver.com/*",
-                "https://m.chzzk.naver.com/*"
-            ],
-            "js": ["content.js"]
-        }
-    ],
-    "action": {
-        "default_popup": "index.html",
-        "default_icon": "icon.png"
+  "manifest_version": 3,
+  "name": "CHZZK All-in-One by hanbi",
+  "short_name": "CHZZK AIO",
+  "version": "1.0.0",
+  "description": "hanbi의 CHZZK 통합 도구: GRID/P2P·광고 우회, 최고 화질, 팔로잉 방송 알림, 녹화·변환·스크린샷, 통나무 자동 획득, 선명도 조절.",
+  "author": "hanbi",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "chzzk-all-in-one@hanbi",
+      "data_collection_permissions": {
+        "required": ["none"]
+      },
+      "strict_min_version": "142.0"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chzzk.naver.com/*", "https://*.chzzk.naver.com/*"],
+      "js": ["page.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     },
-    "icons": {
-        "128": "icon.png"
-    },
-    "permissions": [
-        "storage",
-        "activeTab",
-        "tabs"
-    ],
-    "web_accessible_resources": [
-        {
-            "resources": ["log.html"],
-            "matches": ["<all_urls>"]
-        }
+    {
+      "matches": ["https://chzzk.naver.com/*", "https://m.chzzk.naver.com/*"],
+      "js": ["content.js", "following-logic.js", "tools.js"],
+      "css": ["tools.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "CHZZK All-in-One by hanbi",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "96": "icons/icon-96.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "downloads",
+    "activeTab",
+    "tabs",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://chzzk.naver.com/*",
+    "https://*.chzzk.naver.com/*",
+    "https://*.navercdn.com/*",
+    "https://*.pstatic.net/*",
+    "https://*.akamaized.net/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "grid_bypass",
+        "enabled": true,
+        "path": "rules.json"
+      }
     ]
+  },
+  "background": {
+    "scripts": ["following-logic.js", "background.js"]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["log.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

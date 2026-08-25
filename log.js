@@ -1,6 +1,42 @@
 let allLogs = [];
 let filteredLogs = [];
 
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
+function safeImageUrl(value, fallback) {
+    try {
+        const url = new URL(value || fallback);
+        return ['https:', 'data:'].includes(url.protocol) ? escapeHtml(url.href) : escapeHtml(fallback);
+    } catch (_) {
+        return escapeHtml(fallback);
+    }
+}
+
+function setSafeHtml(element, html) {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    sanitizeParsedHtml(parsed);
+    element.replaceChildren(...parsed.body.childNodes);
+}
+
+function appendSafeHtml(element, html) {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    sanitizeParsedHtml(parsed);
+    element.append(...parsed.body.childNodes);
+}
+
+function sanitizeParsedHtml(parsed) {
+    parsed.querySelectorAll('script, iframe, object, embed').forEach((node) => node.remove());
+    parsed.querySelectorAll('*').forEach((node) => {
+        for (const attribute of [...node.attributes]) {
+            if (attribute.name.toLowerCase().startsWith('on')) node.removeAttribute(attribute.name);
+        }
+    });
+}
+
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', function() {
     loadLogs();
@@ -148,19 +184,19 @@ function showConfirm(message, { title = '확인', okText = '확인', cancelText 
 		overlay.className = 'edit-modal-overlay';
 		const modal = document.createElement('div');
 		modal.className = 'edit-modal';
-		modal.innerHTML = `
+		setSafeHtml(modal, `
 			<div class="edit-modal-header">
-				<h3>${title}</h3>
+				<h3>${escapeHtml(title)}</h3>
 				<button class="close-btn" id="closeConfirmModal">×</button>
 			</div>
 			<div class="edit-modal-content">
-				<div style="font-size:14px; line-height:1.6;">${message}</div>
+				<div style="font-size:14px; line-height:1.6;">${escapeHtml(message)}</div>
 			</div>
 			<div class="edit-modal-footer">
-				<button class="cancel-btn" id="confirmCancelBtn">${cancelText}</button>
-				<button class="${destructive ? 'modal-delete-btn' : 'save-btn'}" id="confirmOkBtn">${okText}</button>
+				<button class="cancel-btn" id="confirmCancelBtn">${escapeHtml(cancelText)}</button>
+				<button class="${destructive ? 'modal-delete-btn' : 'save-btn'}" id="confirmOkBtn">${escapeHtml(okText)}</button>
 			</div>
-		`;
+		`);
 		overlay.appendChild(modal);
 		document.body.appendChild(overlay);
 
@@ -343,7 +379,7 @@ function renderLogs() {
         return;
     }
     
-    logsList.innerHTML = filteredLogs.map(log => {
+    setSafeHtml(logsList, filteredLogs.map(log => {
         const date = new Date(log.timestamp);
         const formattedDate = date.toLocaleDateString('ko-KR', {
             year: 'numeric',
@@ -364,22 +400,22 @@ function renderLogs() {
         }
         
         const isPrediction = String(log.method || '').toLowerCase() === 'prediction';
-        const detailsBtn = isPrediction && log.predictionId ? `<button class="detail-btn" data-channel-id="${log.channelId}" data-prediction-id="${log.predictionId}">상세</button>` : '';
+        const detailsBtn = isPrediction && log.predictionId ? `<button class="detail-btn" data-channel-id="${escapeHtml(log.channelId)}" data-prediction-id="${escapeHtml(log.predictionId)}">상세</button>` : '';
         return `
             <div class="log-item" data-log-index="${filteredLogs.indexOf(log)}">
                 <img src="${log.channelImageUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiNFMkU4RjAiLz4KPHN2ZyB4PSIxMiIgeT0iMTIiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj4KPHBhdGggZD0iTTEyIDJDMTMuMSAyIDE0IDIuOSAxNCA0VjEwQzE0IDExLjEgMTMuMSAxMiAxMiAxMkMxMC45IDEyIDEwIDExLjEgMTAgMTBWNFMxMC45IDIgMTIgMloiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTEyIDE0QzEzLjEgMTQgMTQgMTQuOSAxNCAxNlYyMEMxNCAyMS4xIDEzLjEgMjIgMTIgMjJDMTAuOSAyMiAxMCAyMS4xIDEwIDIwVjE2QzEwIDE0LjkgMTAuOSAxNCAxMiAxNFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cjwvc3ZnPg=='}" 
-                     alt="${log.channelName}" class="channel-image">
+                     alt="${escapeHtml(log.channelName)}" class="channel-image">
                 <div class="log-content">
                     <div class="channel-name">
-                        <a href="https://chzzk.naver.com/${log.channelId}" target="_blank" class="channel-link">
-                            ${log.channelName}${log.verifiedMark ? ' <img src="https://ssl.pstatic.net/static/nng/glive/image/icon_official_mark.png" alt="인증" style="width:16px;height:16px;vertical-align:middle;margin-left:2px;">' : ''}
+                        <a href="https://chzzk.naver.com/${encodeURIComponent(log.channelId || '')}" target="_blank" class="channel-link">
+                            ${escapeHtml(log.channelName)}${log.verifiedMark ? ' <img src="https://ssl.pstatic.net/static/nng/glive/image/icon_official_mark.png" alt="인증" style="width:16px;height:16px;vertical-align:middle;margin-left:2px;">' : ''}
                         </a> ${detailsBtn}
                     </div>
                     <div class="log-details">
-                        <span class="method-badge ${methodClass}">${methodText}</span>
-                        <span class="timestamp">${formattedDate}</span>
+                        <span class="method-badge ${escapeHtml(methodClass)}">${escapeHtml(methodText)}</span>
+                        <span class="timestamp">${escapeHtml(formattedDate)}</span>
                     </div>
-                    ${isPrediction ? `<div class="prediction-details" data-for="${log.predictionId}" style="display:none;margin-top:8px;"></div>` : ''}
+                    ${isPrediction ? `<div class="prediction-details" data-for="${escapeHtml(log.predictionId)}" style="display:none;margin-top:8px;"></div>` : ''}
                 </div>
                 <div class="log-actions">
                     ${(() => {
@@ -396,7 +432,7 @@ function renderLogs() {
                 </div>
             </div>
         `;
-    }).join('');
+    }).join(''));
     
     // 이벤트 리스너 추가
     addEventListeners();
@@ -509,7 +545,7 @@ function addEventListeners() {
                         </div>`;
                 };
                 const statusBanner = (status === 'EXPIRED') ? `<div style=\"margin:-2px 0 6px 0;color:#ffcc00;font-size:12px;\">아직 승부예측이 진행중입니다.</div>` : '';
-                container.innerHTML = `
+                setSafeHtml(container, `
                     <div style="border:1px solid var(--border-color);border-radius:10px;padding:10px;">
                         ${statusBanner}
                         <div style="font-weight:700;margin-bottom:8px;">${c.predictionTitle || '승부예측'}</div>
@@ -517,10 +553,10 @@ function addEventListeners() {
                         ${usedPower!=null ? `<div style=\"margin-top:4px;color:#aaa;font-size:12px;display:flex;justify-content:flex-end;gap:6px;\">사용 통나무 파워 <b>${mk(usedPower)}</b></div>`:''}
                         ${(netWon>=1) ? `<div style=\"margin-top:2px;color:#25ae66;font-size:12px;display:flex;justify-content:flex-end;gap:6px;\">획득 통나무 파워 <b>${mk(netWon)}</b></div>`:''}
                         ${(wonPower!=null && wonPower>=1) ? `<div style=\"margin-top:2px;color:#aaa;font-size:12px;display:flex;justify-content:flex-end;gap:6px;\">합계 통나무 파워 <b>${mk(wonPower)}</b></div>`:''}
-                    </div>`;
+                    </div>`);
             } catch (err) {
                 container.style.display = 'block';
-                container.innerHTML = `<div style=\"color:#f66;font-size:12px;\">상세 정보를 불러오지 못했습니다. 치지직 라이브 탭을 하나 열어둔 뒤 다시 시도해주세요.<br>(${err && err.message ? err.message : err})</div>`;
+                setSafeHtml(container, `<div style=\"color:#f66;font-size:12px;\">상세 정보를 불러오지 못했습니다. 치지직 라이브 탭을 하나 열어둔 뒤 다시 시도해주세요.<br>(${escapeHtml(err && err.message ? err.message : err)})</div>`);
             }
         });
     });
@@ -705,7 +741,7 @@ function editLog(filteredIndex) {
         </div>
     `;
     
-    document.body.insertAdjacentHTML('beforeend', editForm);
+    appendSafeHtml(document.body, editForm);
     
     // 모달 이벤트 리스너 추가
     addModalEventListeners();
@@ -827,7 +863,7 @@ function openTestLogModal(baseIndex) {
             </div>
         </div>
     `;
-    document.body.insertAdjacentHTML('beforeend', form);
+    appendSafeHtml(document.body, form);
     // 이벤트
     const overlay = document.getElementById('testModalOverlay');
     if (overlay) {

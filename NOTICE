@@ -1,0 +1,77 @@
+CHZZK All-in-One by hanbi
+Copyright (C) 2026 hanbi
+
+This combined and modified distribution is licensed under GPL-3.0-or-later.
+It is unofficial and is not affiliated with NAVER or CHZZK.
+
+Included and modified source
+----------------------------
+
+chzzk_auto_log_power
+Copyright (C) 2025 chocolily
+GPL-3.0; modified by hanbi in 2026.
+https://github.com/choco-lily/chzzk_auto_log_power
+
+FUCK-CHZZK-GRID
+Copyright (c) 2025 bass9030
+MIT License; modified and integrated by hanbi in 2026.
+https://github.com/bass9030/FUCK-CHZZK-GRID
+
+@ffmpeg/ffmpeg 0.12.15
+Copyright (c) 2021 ffmpeg.wasm
+MIT License; bundled for local recording conversion.
+https://github.com/ffmpegwasm/ffmpeg.wasm/tree/v0.12.15/packages/ffmpeg
+
+@ffmpeg/core 0.12.10
+Copyright (c) ffmpeg.wasm contributors and FFmpeg contributors
+GPL-2.0-or-later; bundled WebAssembly core, distributed under this project's GPL-3.0-or-later.
+https://github.com/ffmpegwasm/ffmpeg.wasm/tree/v0.12.10/packages/core
+
+Chzzk (치지직) - 실시간 트렌드 및 급상승 탐지기 2.1
+Copyright (c) James YBR
+MIT License; modified and integrated by hanbi in 2026.
+https://greasyfork.org/ko/scripts/578654
+
+Behavioral references only — source code not copied
+---------------------------------------------------
+
+Cheese-PIP by khk4912
+https://github.com/khk4912/Cheese-PIP
+The repository did not declare a redistribution license when reviewed, so
+capture behavior was independently implemented with native browser APIs.
+
+Better Chzzk by neder2
+https://github.com/neder2/Chzzk
+The repository did not declare a redistribution license when reviewed, so
+blind-message behavior was independently implemented without copying source.
+
+"Chzzk P2P Bypass (Tampermonkey / Chrome)", version 2025-09-15
+Author was listed as "???" in the user-provided script. It was used as a
+behavioral reference; the extension implementation is maintained by hanbi.
+
+Artwork
+-------
+
+The extension icon is adapted from character artwork supplied by hanbi for
+this project. Icon reframing was generated with OpenAI ImageGen in 2026.
+
+MIT License text for FUCK-CHZZK-GRID, @ffmpeg/ffmpeg, and Chzzk Trend Detector
+-------------------------------------------------------------------------------
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

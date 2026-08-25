@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>녹화 완료 · CHZZK All-in-One</title>
+  <link rel="stylesheet" href="record-result.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icons/icon-96.png" alt="">
+      <div><p>CHZZK All-in-One · by hanbi</p><h1>녹화 완료</h1></div>
+    </header>
+
+    <section class="preview-card">
+      <video id="result-video" controls preload="metadata"></video>
+      <div class="meta"><strong id="file-name">녹화 불러오는 중…</strong><span id="file-meta"></span></div>
+    </section>
+
+    <section class="panel">
+      <h2>다운로드</h2>
+      <div class="actions">
+        <button type="button" data-action="original" disabled><strong>원본</strong><small>변환 없이 즉시 저장</small></button>
+        <button type="button" data-convert="mp4" disabled><strong>MP4 빠른 변환</strong><small>화질 손실 없이 컨테이너만 변경</small></button>
+        <button type="button" data-convert="mp4-compatible" disabled><strong>MP4 호환 변환 · 추천</strong><small>H.264 + AAC로 재인코딩</small></button>
+        <button type="button" data-convert="gif" disabled><strong>GIF</strong><small>640px · 15fps</small></button>
+        <button type="button" data-convert="webp" disabled><strong>WebP</strong><small>640px · 15fps</small></button>
+      </div>
+    </section>
+
+    <section class="panel tools">
+      <h2>편집 후 MP4</h2>
+      <form id="trim-form">
+        <label>시작(초)<input id="trim-start" type="number" min="0" step="0.1" value="0"></label>
+        <label>종료(초)<input id="trim-end" type="number" min="0.1" step="0.1"></label>
+        <button type="submit" disabled>잘라서 저장</button>
+      </form>
+      <form id="split-form">
+        <label>분할 간격(초)<input id="split-seconds" type="number" min="1" step="1" value="600"></label>
+        <button type="submit" disabled>분할 저장</button>
+      </form>
+    </section>
+
+    <p id="status" role="status">녹화 데이터를 기다리는 중…</p>
+    <div id="progress-wrap" hidden><progress id="progress" max="100" value="0"></progress><span id="progress-text">0%</span></div>
+    <footer>변환은 외부 업로드 없이 이 브라우저에서 처리됩니다. · <a href="NOTICE" target="_blank" rel="noopener">출처·라이선스</a></footer>
+  </main>
+  <script src="record-result-logic.js"></script>
+  <script type="module" src="record-result.js"></script>
+</body>
+</html>

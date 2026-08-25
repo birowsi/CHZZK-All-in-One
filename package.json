@@ -1,0 +1,27 @@
+{
+  "name": "chzzk-all-in-one",
+  "version": "1.0.0",
+  "private": true,
+  "author": "hanbi",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "test": "node --test"
+  },
+  "webExt": {
+    "ignoreFiles": [
+      "assets/**",
+      "dist/**",
+      "test/**",
+      "example/**",
+      "firefox/**"
+    ]
+  },
+  "devDependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "copy-webpack-plugin": "^14.0.0",
+    "fs-extra": "^11.4.0",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2"
+  }
+}

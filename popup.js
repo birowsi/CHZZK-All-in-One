@@ -1,217 +1,90 @@
-let powerTimer = null;
-let clockToggle = false;
-let powerSummaryToggle = false;
-
-// 다음 파워 획득 시간 계산
-function calculateNextPowerTime() {
-    chrome.storage.local.get(
-        ["powerLogs", "lastPowerAcquisitionTime"],
-        (result) => {
-            const logs = result.powerLogs || [];
-            const lastAcquisitionTime = result.lastPowerAcquisitionTime;
-            const now = new Date();
-
-            let nextPowerTime;
-
-            if (lastAcquisitionTime) {
-                // 마지막 획득 시간이 있으면 그 시간부터 1시간 후
-                const lastTime = new Date(lastAcquisitionTime);
-                nextPowerTime = new Date(lastTime.getTime() + 60 * 60 * 1000);
-
-                // 이미 1시간이 지났으면 현재 시간 기준으로 재계산
-                if (nextPowerTime <= now) {
-                    nextPowerTime = calculateFromLastLog(logs, now);
-                }
-            } else {
-                // 마지막 획득 시간이 없으면 마지막 로그 기준으로 계산
-                nextPowerTime = calculateFromLastLog(logs, now);
-            }
-
-            updateTimeDisplay(nextPowerTime);
-        }
-    );
-}
-
-// 마지막 로그 기준으로 다음 획득 시간 계산
-function calculateFromLastLog(logs, now) {
-    if (logs.length === 0) {
-        // 로그가 없으면 현재 시간부터 1시간 후
-        return new Date(now.getTime() + 60 * 60 * 1000);
-    }
-
-    // 가장 최근 로그 찾기
-    const lastLog = logs[0];
-    const lastLogTime = new Date(lastLog.timestamp);
-
-    // 현재 시간의 분을 마지막 로그의 분으로 설정
-    const nextTime = new Date(now);
-    nextTime.setMinutes(lastLogTime.getMinutes());
-    nextTime.setSeconds(0);
-    nextTime.setMilliseconds(0);
-
-    // 현재 시간보다 이전이면 다음 시간으로 설정
-    if (nextTime <= now) {
-        nextTime.setHours(nextTime.getHours() + 1);
-    }
-
-    return nextTime;
-}
-
-// 시간 표시 업데이트
-function updateTimeDisplay(nextPowerTime) {
-    const timeDisplay = document.getElementById("timeDisplay");
-    const now = new Date();
-    const diffMs = nextPowerTime.getTime() - now.getTime();
-
-    if (diffMs <= 0) {
-        timeDisplay.textContent = "곧 획득 가능";
-        return;
-    }
-
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-
-    if (hours > 0) {
-        timeDisplay.textContent = `${hours}시간 ${minutes}분 후`;
-    } else {
-        timeDisplay.textContent = `${minutes}분 후`;
-    }
-}
-
-// 타이머 시작
-function startPowerTimer() {
-    if (powerTimer) {
-        clearInterval(powerTimer);
-    }
-
-    // 즉시 계산
-    calculateNextPowerTime();
-
-    // 1분마다 업데이트
-    powerTimer = setInterval(calculateNextPowerTime, 60 * 1000);
-}
-
-// 마지막 파워 획득 시간 저장
-function saveLastPowerAcquisitionTime() {
-    chrome.storage.local.set({
-        lastPowerAcquisitionTime: new Date().toISOString(),
-    });
-}
-
-onload = (event) => {
-    chrome.storage.sync.get(
-        ["badge", "clockToggle", "movingGifProfile", "powerSummary"],
-        (r) => {
-            if (r.badge == undefined) {
-                r.badge = true;
-                chrome.storage.sync.set({ badge: true });
-            }
-            if (r.clockToggle == undefined) {
-                r.clockToggle = false;
-                chrome.storage.sync.set({ clockToggle: false });
-            }
-            if (r.movingGifProfile == undefined) {
-                r.movingGifProfile = false;
-                chrome.storage.sync.set({ movingGifProfile: false });
-            }
-            if (r.powerSummary == undefined) {
-                r.powerSummary = false;
-                chrome.storage.sync.set({ powerSummary: false });
-            }
-
-            let checkbox = document.getElementById("toggle");
-            checkbox.checked = r.badge;
-            checkbox.addEventListener("change", () => {
-                chrome.storage.sync.set({ badge: checkbox.checked });
-                // 즉시 content script에 변경사항 전달
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (
-                        tabs[0] &&
-                        tabs[0].url &&
-                        tabs[0].url.includes("chzzk.naver.com")
-                    ) {
-                        chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "updateBadgeToggle",
-                            badgeToggle: checkbox.checked,
-                        });
-                    }
-                });
-            });
-
-            let clockCheckbox = document.getElementById("clockToggle");
-            clockCheckbox.checked = r.clockToggle;
-            clockCheckbox.addEventListener("change", () => {
-                chrome.storage.sync.set({ clockToggle: clockCheckbox.checked });
-                // 즉시 content script에 변경사항 전달
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (
-                        tabs[0] &&
-                        tabs[0].url &&
-                        tabs[0].url.includes("chzzk.naver.com")
-                    ) {
-                        chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "updateClockToggle",
-                            clockToggle: clockCheckbox.checked,
-                        });
-                    }
-                });
-            });
-
-            let gifCheckbox = document.getElementById("movingGifProfileToggle");
-            gifCheckbox.checked = r.movingGifProfile;
-            gifCheckbox.addEventListener("change", () => {
-                chrome.storage.sync.set({
-                    movingGifProfile: gifCheckbox.checked,
-                });
-                // 즉시 content script에 변경사항 전달
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (
-                        tabs[0] &&
-                        tabs[0].url &&
-                        tabs[0].url.includes("chzzk.naver.com")
-                    ) {
-                        chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "updateMovingGifProfileToggle",
-                            movingGifProfileToggle: gifCheckbox.checked,
-                        });
-                    }
-                });
-            });
-
-            let summaryCheckbox = document.getElementById("powerSummaryToggle");
-            summaryCheckbox.checked = r.powerSummary;
-            summaryCheckbox.addEventListener("change", () => {
-                chrome.storage.sync.set({ powerSummary: summaryCheckbox.checked });
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (
-                        tabs[0] &&
-                        tabs[0].url &&
-                        tabs[0].url.includes("chzzk.naver.com")
-                    ) {
-                        chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "updatePowerSummaryToggle",
-                            powerSummaryToggle: summaryCheckbox.checked,
-                        });
-                    }
-                });
-            });
-        }
-    );
-
-    // 로그 보기 버튼 이벤트
-    document.getElementById("viewLogs").addEventListener("click", () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL("log.html") });
-    });
-
-    // 파워 타이머 시작
-    startPowerTimer();
+const api = globalThis.browser ?? globalThis.chrome;
+const featureDefaults = {
+  screenshot: true,
+  recorder: true,
+  autoUnmute: true,
+  hideAdPopup: true,
+  blindRestore: true,
+  followingAlerts: true,
+  trends: true,
+  gridBypass: true,
+  sharpness: false,
+};
+const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100 };
+const powerSettings = {
+  toggle: ["badge", "updateBadgeToggle", "badgeToggle", true],
+  clockToggle: ["clockToggle", "updateClockToggle", "clockToggle", false],
+  powerSummaryToggle: ["powerSummary", "updatePowerSummaryToggle", "powerSummaryToggle", false],
+  movingGifProfileToggle: ["movingGifProfile", "updateMovingGifProfileToggle", "movingGifProfileToggle", false],
 };
 
-// 파워 획득 시 호출할 함수 (content script에서 메시지로 호출)
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "powerAcquired") {
-        saveLastPowerAcquisitionTime();
-        calculateNextPowerTime();
+async function notifyTab(message) {
+  const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id && tab.url?.includes("chzzk.naver.com")) api.tabs.sendMessage(tab.id, message).catch(() => {});
+}
+
+function updateNextPowerTime(logs, lastAcquisitionTime) {
+  const now = new Date();
+  let next = lastAcquisitionTime ? new Date(new Date(lastAcquisitionTime).getTime() + 3_600_000) : null;
+  if (!next || next <= now) {
+    const last = logs[0]?.timestamp ? new Date(logs[0].timestamp) : now;
+    next = new Date(now);
+    next.setMinutes(last.getMinutes(), 0, 0);
+    if (next <= now) next.setHours(next.getHours() + 1);
+  }
+  const minutes = Math.max(0, Math.ceil((next - now) / 60_000));
+  document.getElementById("timeDisplay").textContent = minutes ? `${Math.floor(minutes / 60)}시간 ${minutes % 60}분 후`.replace(/^0시간 /, "") : "곧 획득 가능";
+}
+
+async function init() {
+  const { features: savedFeatures = {} } = await api.storage.local.get("features");
+  const features = { ...featureDefaults, ...savedFeatures };
+  for (const input of document.querySelectorAll("[data-feature]")) {
+    input.checked = features[input.dataset.feature];
+    input.addEventListener("change", async () => {
+      features[input.dataset.feature] = input.checked;
+      await api.storage.local.set({ features });
+    });
+  }
+
+  const { trendOptions: savedTrendOptions = {} } = await api.storage.local.get("trendOptions");
+  const trendOptions = { ...trendDefaults, ...savedTrendOptions };
+  for (const input of document.querySelectorAll("[data-trend-option]")) {
+    const key = input.dataset.trendOption;
+    input.value = trendOptions[key];
+    input.addEventListener("change", async () => {
+      const value = Math.max(Number(input.min) || 0, Math.min(Number(input.max) || Infinity, Math.floor(Number(input.value) || trendDefaults[key])));
+      input.value = value;
+      trendOptions[key] = value;
+      await api.storage.local.set({ trendOptions });
+    });
+  }
+
+  const storedPower = await api.storage.sync.get(Object.values(powerSettings).map(([key]) => key));
+  for (const [id, [key, action, messageKey, defaultValue]] of Object.entries(powerSettings)) {
+    const input = document.getElementById(id);
+    input.checked = storedPower[key] ?? defaultValue;
+    input.addEventListener("change", async () => {
+      await api.storage.sync.set({ [key]: input.checked });
+      notifyTab({ action, [messageKey]: input.checked });
+    });
+  }
+
+  const { powerLogs = [], lastPowerAcquisitionTime } = await api.storage.local.get(["powerLogs", "lastPowerAcquisitionTime"]);
+  updateNextPowerTime(powerLogs, lastPowerAcquisitionTime);
+  document.getElementById("viewLogs").addEventListener("click", () => api.tabs.create({ url: api.runtime.getURL("log.html") }));
+  document.getElementById("testFollowingAlert").addEventListener("click", async () => {
+    const status = document.getElementById("popupStatus");
+    const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !tab.url?.includes("chzzk.naver.com")) {
+      status.textContent = "치지직 탭에서 테스트해 주세요.";
+      return;
     }
-});
+    const result = await api.tabs.sendMessage(tab.id, { type: "test-following-alert" }).catch(() => null);
+    if (!result?.shown) status.textContent = "알림 기능을 켜고 페이지를 새로고침해 주세요.";
+    else if (result.apiOk) status.textContent = `팝업 표시 · API 정상 (${result.count}개 채널)`;
+    else status.textContent = `팝업 표시 · API 실패 (${result.error || "로그인 상태 확인"})`;
+  });
+}
+
+init().catch(console.error);

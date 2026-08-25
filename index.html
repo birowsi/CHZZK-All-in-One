@@ -1,31 +1,61 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-    <head>
-        <meta charset="UTF-8" />
-        <title>치지직 통나무 파워 자동 획득 설정</title>
-        <style>
-            body {
-                width: 160px;
-                text-align: center;
-            }
-        </style>
-    </head>
-    <body>
-        <label>통나무 파워 표시: </label>
-        <input id="toggle" type="checkbox" checked />
-        <br>
-        <label>예상 획득 시간 표시: </label>
-        <input id="clockToggle" type="checkbox" />
-        <br>
-        <label>통나무 개수 요약: </label>
-        <input id="powerSummaryToggle" type="checkbox" />
-        <br>
-        <label>움직이는 gif 프로필: </label>
-        <input id="movingGifProfileToggle" type="checkbox" />
-        <div id="nextPowerTime"><br>
-            다음 획득 예상: <span id="timeDisplay">계산 중...</span>
-        </div>
-        <button id="viewLogs" style="width: 100%; padding: 8px; background: #2a6aff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">로그 보기</button>
-        <script src="popup.js"></script>
-    </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CHZZK All-in-One</title>
+  <style>
+    :root { color-scheme: dark; font: 13px system-ui, sans-serif; }
+    body { width: 310px; margin: 0; padding: 16px; color: #f4f5f7; background: #141517; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .brand img { width: 48px; height: 48px; }
+    h1 { margin: 0 0 4px; font-size: 18px; } h2 { margin: 16px 0 6px; font-size: 12px; color: #9ca3af; text-transform: uppercase; }
+    p { margin: 0 0 10px; color: #9ca3af; }
+    label { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 7px 0; border-bottom: 1px solid #25272b; }
+    input { accent-color: #f5f5f5; }
+    input[type="number"] { width: 72px; padding: 5px 7px; border: 1px solid #34373d; border-radius: 6px; color: #fff; background: #1d1f23; text-align: right; }
+    .subsettings { margin: 2px 0 8px; padding: 2px 10px; border-radius: 0 0 8px 8px; background: #ffffff06; }
+    .subsettings label { color: #b7bbc2; font-size: 12px; }
+    button { width: 100%; margin-top: 12px; padding: 9px; border: 1px solid #505258; border-radius: 7px; background: #f2f2f2; color: #111; font-weight: 700; cursor: pointer; }
+    #nextPowerTime { margin-top: 10px; color: #cbd5e1; text-align: center; }
+    footer { margin-top: 12px; text-align: center; } footer a { color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <header class="brand">
+    <img src="icons/icon-48.png" alt="">
+    <div><h1>CHZZK All-in-One</h1><p>Firefox edition · by hanbi</p></div>
+  </header>
+
+  <h2>스트리밍</h2>
+  <label>GRID 우회 <input type="checkbox" data-feature="gridBypass"></label>
+  <label>스크린샷 <input type="checkbox" data-feature="screenshot"></label>
+  <label>녹화 <input type="checkbox" data-feature="recorder"></label>
+  <label>자동 음소거 해제 <input type="checkbox" data-feature="autoUnmute"></label>
+  <label>광고·치트키 안내 제거 <input type="checkbox" data-feature="hideAdPopup"></label>
+  <label>블라인드 채팅 복구 <input type="checkbox" data-feature="blindRestore"></label>
+  <label>팔로잉 방송 시작 팝업 <input type="checkbox" data-feature="followingAlerts"></label>
+  <button id="testFollowingAlert" type="button">방송 알림·API 테스트</button>
+  <p id="popupStatus" role="status" aria-live="polite"></p>
+  <label>실시간 인기 방송 바 <input type="checkbox" data-feature="trends"></label>
+  <div class="subsettings" id="trendSettings">
+    <label>기준 시청자 <input type="number" min="0" step="100" data-trend-option="minViewers"></label>
+    <label>표시 방송 수 <input type="number" min="1" max="30" data-trend-option="displayCount"></label>
+    <label>갱신 주기(분) <input type="number" min="1" max="60" data-trend-option="refreshMinutes"></label>
+  </div>
+  <label>화면 선명도 향상 <input type="checkbox" data-feature="sharpness"></label>
+  <div class="subsettings" id="sharpnessSettings">
+    <label>선명도 강도 (%) <input type="number" min="0" max="300" step="10" data-trend-option="sharpnessAmount"></label>
+  </div>
+
+  <h2>통나무 파워</h2>
+  <label>파워 표시 <input id="toggle" type="checkbox"></label>
+  <label>예상 획득 시간 <input id="clockToggle" type="checkbox"></label>
+  <label>개수 요약 <input id="powerSummaryToggle" type="checkbox"></label>
+  <label>움직이는 GIF 프로필 <input id="movingGifProfileToggle" type="checkbox"></label>
+  <div id="nextPowerTime">다음 획득 예상: <span id="timeDisplay">계산 중…</span></div>
+  <button id="viewLogs" type="button">통나무 로그 보기</button>
+  <footer><a href="NOTICE" target="_blank" rel="noopener">출처·라이선스</a></footer>
+  <script src="popup.js"></script>
+</body>
 </html>
