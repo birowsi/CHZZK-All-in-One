@@ -1628,11 +1628,9 @@ setInterval(() => {
 
     // 1. Audio Compressor
     if (mergedFeatures.audioCompressor) {
-        let compressorAttached = false;
         setInterval(() => {
-            if (compressorAttached) return;
             const video = document.querySelector('video');
-            if (video) {
+            if (video && !video.dataset.compressorAttached) {
                 try {
                     // Try to attach compressor. Note: Might fail if cross-origin isn't set, but page.js helps bypass.
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -1646,7 +1644,7 @@ setInterval(() => {
                     compressor.release.value = 0.25;
                     source.connect(compressor);
                     compressor.connect(ctx.destination);
-                    compressorAttached = true;
+                    video.dataset.compressorAttached = "true";
                     console.log("[치지직 올인원] 오디오 컴프레서 활성화됨");
                 } catch(e) { }
             }
@@ -1668,7 +1666,7 @@ setInterval(() => {
     // 3. Arrow Seek
     if (mergedFeatures.arrowSeek) {
         document.addEventListener("keydown", (e) => {
-            if (["input", "textarea"].includes(e.target.tagName.toLowerCase())) return;
+            if (e.target.matches('input, textarea, [contenteditable="true"]')) return;
             if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
                 const video = document.querySelector("video");
                 if (video && video.duration) {
@@ -1710,13 +1708,8 @@ setInterval(() => {
             if (!link || !link.closest('nav')) return;
             let tooltip = document.getElementById("hanbi-sidebar-hover-preview");
             if (!tooltip) {
-                tooltip = document.createElement("div");
-                tooltip.id = "hanbi-sidebar-hover-preview";
-                tooltip.style.cssText = "position: fixed; z-index: 99999; width: 320px; background: #141517; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #2d303a; overflow: hidden; pointer-events: none; display: none; color: #fff;";
-                const img = document.createElement("img");
-                img.style.cssText = "width: 100%; height: auto; display: block; background: #000;";
-                tooltip.appendChild(img);
-                document.body.appendChild(tooltip);
+                document.body.insertAdjacentHTML('beforeend', '<div id="hanbi-sidebar-hover-preview" style="position: fixed; z-index: 99999; width: 320px; background: #141517; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #2d303a; overflow: hidden; pointer-events: none; display: none; color: #fff;"><img style="width: 100%; height: auto; display: block; background: #000;"></div>');
+                tooltip = document.getElementById("hanbi-sidebar-hover-preview");
             }
             const channelId = link.getAttribute('href').split('/').pop();
             const previewImg = tooltip.querySelector('img');
