@@ -1626,42 +1626,9 @@ setInterval(() => {
     const mergedFeatures = { ...featureDefaults, ...features };
     const mergedTrends = { ...trendDefaults, ...trendOptions };
 
-    // 1. Audio Compressor
-    if (mergedFeatures.audioCompressor) {
-        setInterval(() => {
-            const video = document.querySelector('video');
-            if (video && !video.dataset.compressorAttached) {
-                try {
-                    // Try to attach compressor. Note: Might fail if cross-origin isn't set, but page.js helps bypass.
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    const ctx = new AudioContext();
-                    const source = ctx.createMediaElementSource(video);
-                    const compressor = ctx.createDynamicsCompressor();
-                    compressor.threshold.value = -30;
-                    compressor.knee.value = 10;
-                    compressor.ratio.value = 12;
-                    compressor.attack.value = 0;
-                    compressor.release.value = 0.25;
-                    source.connect(compressor);
-                    compressor.connect(ctx.destination);
-                    video.dataset.compressorAttached = "true";
-                    console.log("[치지직 올인원] 오디오 컴프레서 활성화됨");
-                } catch(e) { }
-            }
-        }, 3000);
-    }
 
-    // 2. Video Filters (Brightness, Contrast)
-    if (mergedFeatures.videoFilters) {
-        const style = document.createElement("style");
-        style.id = "hanbi-video-filters";
-        style.textContent = `
-            video {
-                filter: brightness(${mergedTrends.brightnessAmount}%) contrast(${mergedTrends.contrastAmount}%) !important;
-            }
-        `;
-        document.head.appendChild(style);
-    }
+
+
 
     // 3. Arrow Seek
     if (mergedFeatures.arrowSeek) {

@@ -9,7 +9,6 @@ const featureDefaults = {
   trends: true,
   gridBypass: true,
   sharpness: false,
-  audioCompressor: false,
   arrowSeek: true,
   videoFilters: false,
   hideDonation: false,

@@ -79,6 +79,9 @@
   let previewUrl = null;
   const preparedVideos = new WeakSet();
   const originalMessages = new WeakMap();
+  const audioContexts = new WeakMap();
+  let compressorEnabled = localStorage.getItem("hanbi_comp_enabled") === "true";
+  let compressorStrength = Number(localStorage.getItem("hanbi_comp_strength")) || 12;
 
   const isLive = () => /^\/live\/[^/]+/.test(location.pathname);
 
@@ -198,6 +201,7 @@
   async function captureVisibleVideo(source) {
     const tools = document.getElementById("hanbi-player-tools");
     if (tools) tools.style.visibility = "hidden";
+    await new Promise(requestAnimationFrame);
     await new Promise(requestAnimationFrame);
     let dataUrl;
     try {
@@ -366,21 +370,96 @@
     status(stream.getAudioTracks().length ? "녹화를 시작했습니다." : "오디오 없이 녹화를 시작했습니다.");
   }
 
+  function getCompressor(v) {
+    let data = audioContexts.get(v);
+    if (!data) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = ctx.createMediaElementSource(v);
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -30;
+      comp.knee.value = 10;
+      comp.attack.value = 0;
+      comp.release.value = 0.25;
+      data = { ctx, source, comp, connected: false };
+      audioContexts.set(v, data);
+    }
+    return data;
+  }
+
+  function applyCompressorState(v) {
+    if (!v) return;
+    try {
+      const data = getCompressor(v);
+      if (compressorEnabled) {
+        if (!data.connected) {
+          data.source.disconnect();
+          data.source.connect(data.comp);
+          data.comp.connect(data.ctx.destination);
+          data.connected = true;
+        }
+        data.comp.ratio.value = compressorStrength;
+      } else {
+        if (data.connected) {
+          data.source.disconnect();
+          data.comp.disconnect();
+          data.source.connect(data.ctx.destination);
+          data.connected = false;
+        }
+      }
+    } catch (e) { console.warn("[CHZZK All-in-One] Compressor Error", e); }
+  }
+
   function ensureTools() {
     const target = document.querySelector(".pzp-pc__bottom-buttons-right");
     const existing = document.getElementById("hanbi-player-tools");
     const hasPip = Boolean(video()?.requestPictureInPicture);
     const signature = `${features.recorder}:${features.screenshot}:${hasPip}`;
-    if (!target || (!features.screenshot && !features.recorder && !hasPip)) {
-      existing?.remove();
-      return;
-    }
+    if (!target) return;
     if (existing?.parentElement === target && existing.dataset.signature === signature) return;
     existing?.remove();
 
     const root = document.createElement("span");
     root.id = "hanbi-player-tools";
     root.dataset.signature = signature;
+    root.style.display = "inline-flex";
+    root.style.alignItems = "center";
+    
+    // Compressor UI
+    const compWrapper = document.createElement("span");
+    compWrapper.className = "hanbi-comp-wrapper";
+    compWrapper.style.display = "inline-flex";
+    compWrapper.style.alignItems = "center";
+    compWrapper.style.marginRight = "4px";
+
+    const compBtn = button("소리 정규화", compressorEnabled ? "COMP ON" : "COMP OFF", () => {
+      compressorEnabled = !compressorEnabled;
+      localStorage.setItem("hanbi_comp_enabled", compressorEnabled);
+      compBtn.textContent = compressorEnabled ? "COMP ON" : "COMP OFF";
+      compBtn.classList.toggle("is-recording", compressorEnabled);
+      compSlider.style.display = compressorEnabled ? "inline-block" : "none";
+      applyCompressorState(video());
+    });
+    if (compressorEnabled) compBtn.classList.add("is-recording");
+    
+    const compSlider = document.createElement("input");
+    compSlider.type = "range";
+    compSlider.min = "1";
+    compSlider.max = "20";
+    compSlider.value = compressorStrength;
+    compSlider.title = "컴프레서 강도 조절";
+    compSlider.style.width = "60px";
+    compSlider.style.display = compressorEnabled ? "inline-block" : "none";
+    compSlider.style.margin = "0 4px";
+    compSlider.style.cursor = "pointer";
+    compSlider.addEventListener("input", (e) => {
+      compressorStrength = Number(e.target.value);
+      localStorage.setItem("hanbi_comp_strength", compressorStrength);
+      applyCompressorState(video());
+    });
+
+    compWrapper.append(compBtn, compSlider);
+    root.appendChild(compWrapper);
+
     if (features.recorder) {
       const recordButton = button("녹화 시작/중지", "REC", () => toggleRecording(recordButton));
       root.appendChild(recordButton);
@@ -398,6 +477,7 @@
       source.muted = false;
       source.addEventListener("loadeddata", () => { source.muted = false; }, { once: true });
     }
+    applyCompressorState(source);
   }
 
   function removeAdPopup() {
@@ -673,12 +753,14 @@
 
     const source = video();
     if (source) {
-      if (features.sharpness) {
-        // svg filter url 
-        source.style.filter = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='sharpness'><feConvolveMatrix order='3 3' kernelMatrix='0 -${trendOptions.sharpnessAmount / 100} 0 -${trendOptions.sharpnessAmount / 100} ${1 + 4 * (trendOptions.sharpnessAmount / 100)} -${trendOptions.sharpnessAmount / 100} 0 -${trendOptions.sharpnessAmount / 100} 0' /></filter></svg>#sharpness")`;
-      } else {
-        source.style.filter = "none";
+      let filterString = "";
+      if (features.videoFilters) {
+        filterString += `brightness(${trendOptions.brightnessAmount}%) contrast(${trendOptions.contrastAmount}%) `;
       }
+      if (features.sharpness) {
+        filterString += `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='sharpness'><feConvolveMatrix order='3 3' kernelMatrix='0 -${trendOptions.sharpnessAmount / 100} 0 -${trendOptions.sharpnessAmount / 100} ${1 + 4 * (trendOptions.sharpnessAmount / 100)} -${trendOptions.sharpnessAmount / 100} 0 -${trendOptions.sharpnessAmount / 100} 0' /></filter></svg>#sharpness")`;
+      }
+      source.style.filter = filterString.trim() || "none";
     }
   }
 
