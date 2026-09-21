@@ -1,54 +1,59 @@
 #hanbi-player-tools { display: inline-flex; align-items: center; }
 .hanbi-tool-button { min-width: 42px; padding: 0 6px; color: #fff; font-size: 11px; font-weight: 700; }
-.hanbi-tool-button.is-recording { color: #ff4d5a; }
-#hanbi-recording-indicator { position: fixed; top: 16px; right: 16px; z-index: 2147483647; padding: 7px 10px; border-radius: 8px; color: #fff; background: #b21825e8; box-shadow: 0 4px 16px #0007; font: 700 13px/1.2 system-ui, sans-serif; pointer-events: none; }
-#hanbi-tool-status { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 2147483647; padding: 8px 12px; border-radius: 7px; color: #fff; background: #222e; font-size: 13px; }
-#hanbi-tool-status.is-error { background: #a51f2bef; }
-#hanbi-following-alerts { position: fixed; top: 64px; right: 18px; z-index: 2147483647; display: grid; gap: 10px; width: min(390px, calc(100vw - 24px)); font: 13px/1.35 system-ui, sans-serif; }
-.hanbi-following-alert { position: relative; display: grid; grid-template-columns: 86px minmax(0, 1fr) auto; align-items: center; gap: 14px; overflow: hidden; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; color: #fff; background: rgba(20, 22, 26, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 230, 118, 0.1); animation: hanbi-alert-in .3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-.hanbi-following-alert > img { width: 86px; height: 48px; border-radius: 8px; background: #1a1c23; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.hanbi-following-alert > div { display: grid; min-width: 0; gap: 4px; }
-.hanbi-following-alert b { width: max-content; padding: 3px 6px; border-radius: 6px; color: #000; background: #00e676; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+.hanbi-tool-button.is-recording { color: #00ffa3; }
+#hanbi-audio-compressor { display: inline-flex; align-items: center; }
+#hanbi-audio-compressor input[type="range"] { width: 72px; margin: 0 5px; accent-color: #00ffa3; cursor: pointer; }
+#hanbi-audio-compressor input[hidden] { display: none !important; }
+#hanbi-recording-indicator { position: fixed; top: 16px; right: 16px; z-index: 2147483647; padding: 7px 10px; border: 1px solid #00ffa3; border-radius: 4px; color: #00ffa3; background: #0b0b0bf2; font: 700 13px/1.2 system-ui, sans-serif; pointer-events: none; }
+#hanbi-tool-status { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 2147483647; padding: 8px 12px; border: 1px solid #3b3b3b; border-radius: 4px; color: #fff; background: #111f; font: 13px/1.2 system-ui, sans-serif; }
+#hanbi-tool-status.is-error { border-color: #777; }
+
+#hanbi-following-alerts { position: fixed; top: 64px; right: 18px; z-index: 2147483647; display: grid; gap: 7px; width: min(380px, calc(100vw - 24px)); font: 13px/1.35 system-ui, sans-serif; }
+.hanbi-following-alert { position: relative; display: grid; grid-template-columns: 86px minmax(0, 1fr) auto; align-items: center; gap: 12px; overflow: hidden; padding: 11px 12px; border: 1px solid #3a3a3a; border-left: 3px solid #00ffa3; border-radius: 5px; color: #fff; background: #0d0d0df7; box-shadow: 0 8px 22px #0009; animation: hanbi-alert-in 150ms steps(3, end); }
+.hanbi-following-alert > img { width: 86px; height: 48px; border: 1px solid #303030; border-radius: 3px; background: #000; object-fit: cover; }
+.hanbi-following-alert > div { display: grid; min-width: 0; gap: 3px; }
+.hanbi-following-alert b { width: max-content; padding: 2px 5px; border-radius: 2px; color: #050505; background: #00ffa3; font-size: 10px; letter-spacing: .5px; }
 .hanbi-following-alert strong, .hanbi-following-alert span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hanbi-following-alert strong { font-size: 14px; letter-spacing: -0.3px; }
-.hanbi-following-alert span { color: #8892a0; font-size: 12px; }
-.hanbi-following-alert a { padding: 8px 12px; border: none; border-radius: 8px; color: #fff; background: rgba(0, 230, 118, 0.15); border: 1px solid rgba(0, 230, 118, 0.3); text-decoration: none; font-weight: 600; font-size: 13px; white-space: nowrap; transition: all 0.2s ease; margin-right: 20px; }
-.hanbi-following-alert a:hover { background: rgba(0, 230, 118, 0.25); border-color: #00e676; transform: translateY(-1px); }
-.hanbi-following-alert button { position: absolute; top: 8px; right: 8px; border: 0; color: #8892a0; background: none; cursor: pointer; font-size: 16px; transition: color 0.2s; padding: 4px; border-radius: 50%; }
-.hanbi-following-alert button:hover { color: #fff; background: rgba(255,255,255,0.1); }
-@keyframes hanbi-alert-in { from { opacity: 0; transform: translateX(30px) scale(0.95); } }
-#hanbi-screenshot-preview { position: fixed; left: 50%; top: 5vh; transform: translateX(-50%); width: min(72vw, 880px); z-index: 2147483647; overflow: hidden; border: 1px solid #ffffff24; border-radius: 14px; background: #111216f5; box-shadow: 0 18px 60px #000d; }
-#hanbi-screenshot-preview > img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #050506; }
-#hanbi-screenshot-preview .hanbi-preview-title { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 7px 8px 7px 14px; cursor: grab; user-select: none; touch-action: none; }
+.hanbi-following-alert span { color: #aaa; font-size: 12px; }
+.hanbi-following-alert a { margin-right: 19px; padding: 7px 10px; border: 1px solid #00ffa3; border-radius: 3px; color: #00ffa3; background: #111; text-decoration: none; font-weight: 700; white-space: nowrap; transition: color 80ms steps(2, end), background 80ms steps(2, end); }
+.hanbi-following-alert a:hover { color: #050505; background: #00ffa3; }
+.hanbi-following-alert button { position: absolute; top: 5px; right: 5px; padding: 3px; border: 0; color: #999; background: none; cursor: pointer; font-size: 17px; }
+.hanbi-following-alert button:hover { color: #00ffa3; }
+@keyframes hanbi-alert-in { from { opacity: 0; transform: translateX(24px); } }
+
+#hanbi-screenshot-preview { position: fixed; left: 50%; top: 5vh; transform: translateX(-50%); width: min(72vw, 880px); z-index: 2147483647; overflow: hidden; border: 1px solid #3a3a3a; border-radius: 5px; background: #0d0d0df8; box-shadow: 0 18px 50px #000d; }
+#hanbi-screenshot-preview > img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; }
+#hanbi-screenshot-preview .hanbi-preview-title { display: flex; align-items: center; gap: 8px; min-height: 43px; padding: 6px 7px 6px 12px; cursor: grab; user-select: none; touch-action: none; }
 #hanbi-screenshot-preview .hanbi-preview-title:active { cursor: grabbing; }
 #hanbi-screenshot-preview .hanbi-preview-title strong { color: #fff; font: 700 13px/1.2 system-ui, sans-serif; }
-#hanbi-screenshot-preview .hanbi-preview-title > span { color: #8b9099; font: 11px/1.2 system-ui, sans-serif; }
-#hanbi-screenshot-preview .hanbi-preview-title div { display: flex; gap: 6px; margin-left: auto; }
-#hanbi-screenshot-preview button { min-width: 54px; padding: 7px 11px; border: 1px solid #ffffff1f; border-radius: 8px; color: #fff; background: #292b31; cursor: pointer; font-weight: 700; }
-#hanbi-screenshot-preview button[data-save] { border-color: #00ffa366; color: #00ffa3; }
-#hanbi-screenshot-preview button[data-close] { min-width: 34px; font-size: 18px; }
+#hanbi-screenshot-preview .hanbi-preview-title > span { color: #888; font: 11px/1.2 system-ui, sans-serif; }
+#hanbi-screenshot-preview .hanbi-preview-title div { display: flex; gap: 5px; margin-left: auto; }
+#hanbi-screenshot-preview button { min-width: 52px; padding: 6px 10px; border: 1px solid #444; border-radius: 3px; color: #fff; background: #1e1e1e; cursor: pointer; font-weight: 700; }
+#hanbi-screenshot-preview button[data-save] { border-color: #00ffa3; color: #00ffa3; }
+#hanbi-screenshot-preview button[data-close] { min-width: 32px; font-size: 18px; }
+
 [data-hanbi-blind-masked="1"] { display: none !important; }
 .hanbi-restored-message { color: inherit !important; opacity: .75 !important; text-decoration: line-through; word-break: break-word; }
-#hanbi-trends { --hanbi-trend-left: 0px; display: flex; align-items: center; gap: 10px; box-sizing: border-box; width: calc(100% - var(--hanbi-trend-left)); margin-left: var(--hanbi-trend-left); padding: 9px 14px; border-bottom: 1px solid var(--color-border-outer, #292b30); background: color-mix(in srgb, var(--color-bg-aside, #141517) 95%, transparent); font: 12px/1.2 system-ui, sans-serif; }
-.hanbi-trend-heading { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; padding-right: 10px; border-right: 1px solid #ffffff18; color: var(--color-text-main, #fff); white-space: nowrap; }
-.hanbi-trend-heading button { padding: 4px 7px; border: 1px solid #ffffff1c; border-radius: 6px; color: #aeb4bd; background: #ffffff0b; cursor: pointer; font: inherit; }
-.hanbi-trend-heading button:hover { color: #00ffa3; border-color: #00ffa355; }
-.hanbi-trend-list { display: flex; min-width: 0; gap: 7px; overflow-x: auto; padding: 2px 1px 4px; scrollbar-width: thin; }
-.hanbi-trend-link { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; max-width: 210px; padding: 5px 8px; border: 1px solid #00ffa345; border-radius: 8px; color: #e9fff7; background: #00ffa311; text-decoration: none; transition: .16s ease; }
-.hanbi-trend-link:hover { border-color: #00ffa3; background: #00ffa323; transform: translateY(-1px); }
-.hanbi-trend-link b { display: grid; place-items: center; min-width: 19px; height: 19px; border-radius: 6px; color: #00ffa3; background: #061b13; font-size: 10px; }
+#hanbi-video-filter-svg { position: fixed; width: 0; height: 0; pointer-events: none; }
+
+#hanbi-trends { --hanbi-trend-left: 0px; display: flex; align-items: center; gap: 9px; box-sizing: border-box; width: calc(100% - var(--hanbi-trend-left)); margin-left: var(--hanbi-trend-left); padding: 8px 12px; border-bottom: 1px solid #333; background: #101010f5; font: 12px/1.2 system-ui, sans-serif; }
+.hanbi-trend-heading { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; padding-right: 9px; border-right: 1px solid #383838; color: #fff; white-space: nowrap; }
+.hanbi-trend-heading button { padding: 4px 6px; border: 1px solid #444; border-radius: 3px; color: #aaa; background: #171717; cursor: pointer; font: inherit; }
+.hanbi-trend-heading button:hover { color: #00ffa3; border-color: #00ffa3; }
+.hanbi-trend-list { display: flex; min-width: 0; gap: 6px; overflow-x: auto; padding: 1px 1px 3px; scrollbar-width: thin; }
+.hanbi-trend-link { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; max-width: 210px; padding: 5px 7px; border: 1px solid #424242; border-radius: 3px; color: #e8e8e8; background: #171717; text-decoration: none; transition: border-color 80ms steps(2, end), color 80ms steps(2, end); }
+.hanbi-trend-link:hover, .hanbi-trend-link.is-pumping { border-color: #00ffa3; color: #00ffa3; }
+.hanbi-trend-link.is-pumping { animation: hanbi-trend-step 700ms steps(2, end) 2; }
+.hanbi-trend-link b { display: grid; place-items: center; min-width: 18px; height: 18px; border-radius: 2px; color: #00ffa3; background: #050505; font-size: 10px; }
 .hanbi-trend-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hanbi-trend-link small { padding: 2px 5px; border-radius: 5px; color: #00ffa3; background: #0007; font-size: 10px; }
-.hanbi-trend-link.is-pumping { border-color: #00ffa3; background: #00ffa329; box-shadow: 0 0 10px #00ffa344; animation: hanbi-trend-pulse 1.4s ease-in-out infinite alternate; }
-@keyframes hanbi-trend-pulse { to { box-shadow: 0 0 18px #00ffa377; } }
-#hanbi-trend-preview { position: fixed; z-index: 2147483646; overflow: hidden; border: 2px solid #00ffa3; border-radius: 12px; background: #111216; box-shadow: 0 16px 48px #000d; pointer-events: none; }
-#hanbi-trend-preview[hidden] { display: none; }
-#hanbi-trend-preview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #050506; }
-#hanbi-trend-preview div { display: grid; gap: 2px; padding: 10px 12px; }
+.hanbi-trend-link small { padding: 2px 4px; border-radius: 2px; color: #00ffa3; background: #050505; font-size: 10px; }
+#hanbi-trend-preview, #hanbi-sidebar-hover-preview { position: fixed; z-index: 2147483646; overflow: hidden; border: 1px solid #00ffa3; border-radius: 4px; color: #fff; background: #0d0d0d; box-shadow: 0 14px 36px #000d; pointer-events: none; }
+#hanbi-trend-preview[hidden], #hanbi-sidebar-hover-preview[hidden] { display: none; }
+#hanbi-trend-preview img, #hanbi-sidebar-hover-preview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
+#hanbi-trend-preview div { display: grid; gap: 2px; padding: 9px 10px; }
 #hanbi-trend-preview strong { overflow: hidden; color: #fff; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-#hanbi-trend-preview span { color: #aeb4bd; font-size: 11px; }
-html[data-theme="light"] #hanbi-trends { background: #f4f5f7eF; }
-html[data-theme="light"] .hanbi-trend-heading { color: #16181c; border-color: #00000018; }
-html[data-theme="light"] .hanbi-trend-link { color: #075f41; background: #00a86b10; }
-html[data-theme="light"] .hanbi-following-alert { color: #fff; background: #0b0c0ef7; box-shadow: 0 12px 32px #0007; }
+#hanbi-trend-preview span { color: #aaa; font-size: 11px; }
+#hanbi-sidebar-hover-preview strong { display: block; overflow: hidden; padding: 8px 10px; color: #fff; font: 700 12px/1.2 system-ui, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes hanbi-trend-step { 50% { background: #00ffa326; } }
+
 @media (max-width: 760px) { #hanbi-trends { align-items: stretch; flex-direction: column; } .hanbi-trend-heading { justify-content: space-between; border-right: 0; } #hanbi-screenshot-preview { width: calc(100vw - 16px); } #hanbi-following-alerts { top: 54px; right: 12px; } .hanbi-following-alert { grid-template-columns: 72px minmax(0, 1fr); } .hanbi-following-alert > img { width: 72px; height: 48px; } .hanbi-following-alert a { grid-column: 1 / -1; text-align: center; } }

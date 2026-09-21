@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { chooseRecorderMime, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, needsFirefoxAudioMonitor, calculateTrendOffset, selectTrendStreams, trendThumbnail } = require("../tools.js");
+const { chooseRecorderMime, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, needsFirefoxAudioMonitor, calculateTrendOffset, clampSeekTime, channelIdFromHref, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail } = require("../tools.js");
 
 test("MediaRecorder는 Firefox가 지원하는 첫 WebM 형식을 고른다", () => {
   const supported = new Set(["video/webm;codecs=vp8,opus", "video/webm"]);
@@ -44,4 +44,32 @@ test("트렌드 바는 열린 왼쪽 메뉴만큼 시작점을 보정한다", ()
   assert.equal(calculateTrendOffset(0, 0, 240), 240);
   assert.equal(calculateTrendOffset(240, 0, 240), 0);
   assert.equal(calculateTrendOffset(240, 240, 80), 80);
+});
+
+test("방향키 탐색은 현재 seek 범위를 넘지 않는다", () => {
+  assert.equal(clampSeekTime(12, -5, 10, 20), 10);
+  assert.equal(clampSeekTime(18, 5, 10, 20), 20);
+  assert.equal(channelIdFromHref("/live/channel-id?x=1"), "channel-id");
+  assert.equal(channelIdFromHref("/video/123"), "");
+});
+
+test("팔로잉 섹션만 인정하고 사이드바 전체 문구는 거부한다", () => {
+  assert.equal(isFollowingSectionLabel("팔로잉 채널"), true);
+  assert.equal(isFollowingSectionLabel("Following Channels"), true);
+  assert.equal(isFollowingSectionLabel("팔로잉 인기 카테고리 파트너 스트리머"), false);
+});
+
+test("컴프레서는 cheese-knife와 같은 Source → Compressor → Gain 그래프를 쓴다", () => {
+  assert.deepEqual(compressorDefaults, { threshold: -50, knee: 40, ratio: 12, attack: 0, release: 0.25 });
+  const links = [];
+  const node = (name) => ({ name, connect: (target) => links.push(`${name}->${target.name}`), disconnect() {} });
+  const graph = {
+    source: node("source"), compressor: node("compressor"), gain: node("gain"),
+    context: { destination: { name: "destination" } },
+  };
+  assert.equal(connectAudioGraph(graph, true), true);
+  assert.deepEqual(links, ["source->compressor", "compressor->gain", "gain->destination"]);
+  links.length = 0;
+  assert.equal(connectAudioGraph(graph, false), true);
+  assert.deepEqual(links, ["source->destination"]);
 });

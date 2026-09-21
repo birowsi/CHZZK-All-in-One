@@ -1,6 +1,6 @@
 # CHZZK All-in-One QA 체크노트
 
-- 대상 버전: `0.3.7`
+- 대상 버전: `1.0.2`
 - 우선 브라우저: Firefox 142 이상
 - 주 개발 환경: Windows 10/11
 - 결과 표기: `[ ]` 미실행 · `[x]` 통과 · `[!]` 실패 · `[-]` 해당 없음/차단
@@ -12,7 +12,7 @@
 | 실시간 트렌드 자동 갱신 | 기본 1분. 팝업에서 1~60분으로 변경 가능 |
 | 트렌드 즉시 갱신 | 트렌드 바의 시각/`↻` 버튼 클릭 |
 | 급상승 판정 | 직전 조회보다 `500명 이상` 또는 `20% 이상` 증가 |
-| 팔로잉 채널 방송 시작 알림 | 활성 CHZZK 탭에서 15초 간격 확인. Firefox 시스템 알림이 아닌 페이지 내 카드 UI |
+| 팔로잉 채널 방송 시작 알림 | 활성 CHZZK 탭의 팔로잉 사이드바 DOM 변경을 즉시 감지하고 5초마다 보조 확인. Firefox 시스템 알림이 아닌 페이지 내 카드 UI |
 | 팔로우 통나무 자동 획득 | 구현됨. 사용자가 채널을 팔로우한 직후 보상 claim을 확인하는 기능이며 방송 시작 알림과는 별개 |
 | Chromium | 후순위. 이번 QA의 합격 대상이 아님 |
 
@@ -57,12 +57,12 @@ CHZZK URL / 채널 ID:
 ## 3. 자동 검사와 패키지
 
 - [ ] AUTO-01 `npm install`이 오류 없이 끝난다.
-- [ ] AUTO-02 `npm test` 결과가 15 tests / 15 pass이다.
-- [ ] AUTO-03 `npx web-ext lint --source-dir .` 결과가 errors 0이다.
-- [ ] AUTO-04 CSP 경고 1개만 존재한다. 로컬 ffmpeg WebAssembly 실행용 `wasm-unsafe-eval` 검토 경고이다.
-- [ ] AUTO-05 `./build.ps1` 실행 후 동일 버전의 `.zip`과 `.xpi`가 생성된다.
-- [ ] AUTO-06 XPI 루트에 `manifest.json`이 있고 `record-result.*`, `vendor/ffmpeg/**`, `icons/**`, `LICENSE`, `NOTICE`가 포함된다.
-- [ ] AUTO-07 `node_modules`, `test`, `assets`, 구버전 `dist` 파일은 XPI에 들어가지 않는다.
+- [x] AUTO-02 `npm test` 결과가 19 tests / 19 pass이다.
+- [x] AUTO-03 `npx web-ext lint --source-dir .` 결과가 errors 0이다.
+- [x] AUTO-04 CSP 경고 1개만 존재한다. 로컬 ffmpeg WebAssembly 실행용 `wasm-unsafe-eval` 검토 경고이다.
+- [x] AUTO-05 `./build.ps1` 실행 후 동일 버전의 `.zip`과 `.xpi`가 생성된다.
+- [x] AUTO-06 XPI 루트에 `manifest.json`이 있고 `record-result.*`, `vendor/ffmpeg/**`, `icons/**`, `LICENSE`, `NOTICE`가 포함된다.
+- [x] AUTO-07 `node_modules`, `test`, `assets`, 구버전 `dist` 파일은 XPI에 들어가지 않는다.
 
 ## 4. 설치·메타데이터·팝업
 
@@ -82,8 +82,9 @@ CHZZK URL / 채널 ID:
 - [ ] NET-04 480p HLS 요청이 발생하면 대응되는 1080p URL로 리다이렉트된다.
 - [ ] NET-05 HLS master playlist에서 가장 높은 1080p variant 하나가 선택된다.
 - [ ] NET-06 API JSON의 `p2pQuality`가 빈 배열이 되고 `meta.p2p`가 false가 된다.
-- [ ] NET-07 `p2pPath`, `p2pPathUrlEncoding`, `gridPath`, `gridPathUrlEncoding` 필드가 제거된다.
+- [ ] NET-07 `p2pPath`, `p2pPathUrlEncoding` 필드가 제거된다.
 - [ ] NET-08 JSON이 아닌 응답, 깨진 JSON, unrelated API는 변경되지 않는다.
+- [ ] NET-09 치트키 제한 스포츠 중계에 1080p가 없으면 서버가 제공한 480p/360p 중 최고 화질로 계속 재생된다.
 
 ### 핵심 4종 출시 차단 게이트
 
@@ -104,6 +105,9 @@ CHZZK URL / 채널 ID:
 - [ ] UI-04 버튼 tooltip/title/aria-label이 키보드와 스크린리더에서 식별 가능하다.
 - [ ] UI-05 전체 화면, 창 크기 변경, 극장 모드에서도 버튼이 플레이어 조작을 막지 않는다.
 - [ ] UI-06 오류 toast가 한 개만 표시되고 약 3.5초 후 사라진다.
+- [ ] UI-07 확장 팝업·로그·녹화 결과 화면은 검정/흰색/회색만 사용한다.
+- [ ] UI-08 CHZZK 페이지 위 UI는 검정/회색 바탕에 CHZZK 초록색 강조 하나만 사용한다.
+- [ ] UI-09 전환 애니메이션은 짧은 `steps()` 방식이며 끊김이 의도된 동작처럼 일정하다.
 
 ## 7. 스크린샷
 
@@ -120,7 +124,7 @@ CHZZK URL / 채널 ID:
 
 ## 8. 녹화 중 동작
 
-- [ ] REC-01 `REC` 클릭 후 버튼이 `STOP`으로 바뀌고 빨간 녹화 타이머가 한 개만 표시된다.
+- [ ] REC-01 `REC` 클릭 후 버튼이 `STOP`으로 바뀌고 초록 강조 녹화 타이머가 한 개만 표시된다.
 - [ ] REC-02 타이머가 `00:00`부터 매초 증가한다.
 - [ ] REC-03 녹화 중 방송 영상이 계속 보인다.
 - [ ] REC-04 **Firefox에서 녹화 중 방송 소리가 계속 들린다.**
@@ -195,7 +199,7 @@ CHZZK URL / 채널 ID:
 - [ ] TREND-08 갱신 시각이 24시간 형식으로 바뀐다.
 - [ ] TREND-09 첫 조회는 인기 상위 목록을 표시하고 급상승 표시를 붙이지 않는다.
 - [ ] TREND-10 다음 조회부터 기준 시청자 이상 방송을 대상으로 급상승을 계산한다.
-- [ ] TREND-11 직전보다 500명 이상 또는 20% 이상 증가하면 `⚡`와 펄스 효과가 표시된다.
+- [ ] TREND-11 직전보다 500명 이상 또는 20% 이상 증가하면 `⚡`와 짧은 단계식 강조가 표시된다.
 - [ ] TREND-12 기준을 만족하는 방송이 없을 때 인기 상위 목록으로 fallback한다.
 - [ ] TREND-13 링크의 순위, 채널명, 축약 시청자 수가 정확하다.
 - [ ] TREND-14 링크 hover 시 720 타입 썸네일, 방송 제목, 채널, 정확한 시청자 수가 하나의 팝업에 표시된다.
@@ -288,19 +292,20 @@ CHZZK URL / 채널 ID:
 ## 20. 팔로잉 채널 방송 시작 웹 팝업
 
 - [ ] FOLLOW-NOTI-01 `notifications` 권한 없이 사용자 ON/OFF 설정을 제공한다.
-- [ ] FOLLOW-NOTI-02 로그인 사용자의 팔로잉 목록과 라이브 상태를 가져온다.
+- [ ] FOLLOW-NOTI-02 열린 팔로잉 사이드바의 라이브 링크를 읽고 채널 ID·이름·썸네일을 수집한다.
 - [ ] FOLLOW-NOTI-03 OFFLINE→OPEN 상태 전환만 알림으로 판단한다.
 - [ ] FOLLOW-NOTI-04 확장 시작 직후 이미 방송 중인 모든 채널을 한꺼번에 알리지 않는다.
-- [ ] FOLLOW-NOTI-05 동일 방송은 liveId 기준 한 번만 알린다.
+- [ ] FOLLOW-NOTI-05 같은 채널이 계속 라이브인 동안 한 번만 알리고, 오프라인 후 재시작하면 다시 알린다.
 - [ ] FOLLOW-NOTI-06 페이지 오른쪽 위 직접 제작한 카드에 LIVE, 채널명, 제목, 썸네일을 표시한다.
 - [ ] FOLLOW-NOTI-07 `방송 보기`를 누르면 해당 `/live/{channelId}`로 이동한다.
 - [ ] FOLLOW-NOTI-08 방송 재시작/제목 변경/카테고리 변경을 중복 시작 알림으로 오인하지 않는다.
-- [ ] FOLLOW-NOTI-09 네트워크 끊김, API 401/429/5xx가 나도 기존 페이지 UI가 깨지지 않고 다음 주기에 재시도한다.
-- [ ] FOLLOW-NOTI-10 활성 CHZZK 탭 하나만 15초 간격으로 조회하고 마지막 상태를 local 저장한다.
+- [ ] FOLLOW-NOTI-09 팔로잉 API 404와 무관하게 사이드바 DOM만으로 동작하며 기존 페이지 UI를 깨뜨리지 않는다.
+- [ ] FOLLOW-NOTI-10 활성 CHZZK 탭의 DOM 변경 직후와 5초 보조 주기에 확인하고 마지막 상태를 local 저장한다.
 - [ ] FOLLOW-NOTI-11 카드가 15초 후 자동 종료되고, 닫기 버튼이 동작하며, 최대 3개만 표시된다.
-- [ ] FOLLOW-NOTI-12 확장 설정의 `방송 알림·API 테스트`를 누르면 카드와 API 정상 여부·채널 수가 함께 확인된다.
+- [ ] FOLLOW-NOTI-12 확장 설정의 `방송 시작 알림 테스트`를 누르면 카드와 팔로잉 사이드바 감지 여부·방송 수가 함께 확인된다.
 - [ ] FOLLOW-NOTI-13 기능 OFF 시 조회와 표시가 멈추고 기존 카드가 제거된다.
 - [ ] FOLLOW-NOTI-14 모바일·light/dark 테마에서 카드가 화면 밖으로 잘리지 않는다.
+- [ ] FOLLOW-NOTI-15 인기 카테고리·파트너 스트리머·방송 일정의 라이브 링크는 팔로잉 알림으로 수집되지 않는다.
 
 ## 21. 출시 판정
 
@@ -312,9 +317,10 @@ CHZZK URL / 채널 ID:
 - [ ] RELEASE-06 버전·README·NOTICE·XPI 파일명이 일치
 - [ ] RELEASE-07 AMO 제출본이면 서명·데이터 수집 선언·CSP 검토 사유 확인
 
-## 22. 신규 확장 기능 (치즈 나이프 호환)
+## 22. 추가 플레이어·탐색 기능
 
-- [ ] EXT-01 `오디오 컴프레서` 옵션 활성화 시 동영상 소리가 정규화되며 크로스오리진 에러가 발생하지 않는다.
+- [ ] EXT-01 플레이어 볼륨 옆 `COMP`를 켜면 원본 cheese-knife와 같은 `MediaElementSource → DynamicsCompressor → Gain` 그래프로 연결되고, 끄면 원본 출력으로 우회한다.
+- [ ] EXT-01A 기본값이 threshold -50dB, knee 40dB, ratio 12:1, attack 0초, release 0.25초이며 Gain 슬라이더가 0~200%로 동작한다.
 - [ ] EXT-02 `영상 필터 (밝기/대비)` 수치 조절 시 실시간 영상에 즉시 반영된다.
 - [ ] EXT-03 `방향키 탐색` 활성화 시 좌/우 방향키로 5초씩 영상이 이동한다 (타임머신).
 - [ ] EXT-04 채팅창 입력 중에 방향키를 누르면 영상이 이동하지 않고 커서만 이동한다.
@@ -323,3 +329,22 @@ CHZZK URL / 채널 ID:
 - [ ] EXT-07 `사이드바 자동 갱신` 활성화 시 좌측 팔로잉 탭이 30초마다 자동으로 갱신된다.
 - [ ] EXT-08 `마우스 오버 미리보기` 활성화 시 사이드바 방송 링크에 마우스를 올리면 썸네일 팝업이 뜬다.
 - [ ] EXT-09 썸네일 팝업이 화면 밖으로 나가지 않으며 마우스를 떼면 즉시 사라진다.
+
+## 23. 최초 소스·현재 구현 대조표
+
+| 최초 소스/참고 | 원래 기능 | 현재 위치 | 확인 |
+|---|---|---|---|
+| 사용자 제공 P2P Bypass | `p2pQuality`, playback P2P 경로 제거 | `page.js` | 자동 테스트 |
+| 사용자 제공 올인원 스크립트 | 최고 화질, 광고 경고 제거, 자동 음소거 해제 | `page.js`, `tools.js` | 자동+수동 |
+| 사용자 제공 1080p 개선판·Best Quality | master playlist 최고 1080p 선택 | `page.js` | 자동 테스트 |
+| 사용자 제공 블라인드 복구 | 확인 가능한 원문 보존·복구 | `tools.js` | 자동+수동 |
+| 사용자 제공 트렌드 2.1 | 인기/급상승, 갱신, 썸네일 미리보기 | `tools.js` | 자동+수동 |
+| 사용자 제공 SSAI Ad Blocker | 라이브 광고 미디어 건너뛰기 | `page.js` | 자동+수동 |
+| Cheese-PIP | REC, SHOT, 방향키 탐색, PIP | `tools.js`, `record-result.*` | 자동+수동 |
+| chzzk_auto_log_power | 자동 획득, 잔액, 랭킹, 로그, 승부예측 | `content.js`, `log.*` | 원본 대조+수동 |
+| FUCK-CHZZK-GRID | 480p 요청을 1080p로 치환, ruleset ON/OFF | `rules.json`, `background.js` | 자동+수동 |
+| cheese-knife | 오디오 컴프레서 그래프·기본값·Gain | `tools.js` | 자동+수동 |
+| Better Chzzk 동작 참고 | 블라인드·사이드바 갱신·호버 미리보기 | `tools.js` 독립 구현 | 수동 |
+| v1.0.0 후속 타임머신 패치 | 응답의 기존 `timeMachine` 플래그 보존, 구매 안내 숨김 | `page.js`, `tools.js` | 자동+수동 |
+
+타임머신은 최초 첨부 스크립트나 세 GitHub 원본에는 없고 `a0f9b4d`에서 추가됐다. 현재 코드는 그 패치를 삭제하지 않으며, 방향키는 브라우저가 실제로 제공한 seekable 범위 안에서만 이동한다.

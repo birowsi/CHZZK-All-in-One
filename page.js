@@ -44,8 +44,13 @@
   }
 
   function patchPlayback(playback) {
+    if (!playback || typeof playback !== "object") return false;
     let changed = false;
-    if (playback?.meta?.p2p !== false) {
+    if (!playback.meta || typeof playback.meta !== "object") {
+      playback.meta = {};
+      changed = true;
+    }
+    if (playback.meta.p2p !== false) {
       playback.meta.p2p = false;
       changed = true;
     }
@@ -100,7 +105,7 @@
   }
 
   function patchJsonText(text) {
-    if (typeof text !== "string" || !/(?:"dab"|"p2pQuality"|"livePlaybackJson")/.test(text)) return text;
+    if (typeof text !== "string" || !/(?:"dab"|"timeMachine"|"p2pQuality"|"livePlaybackJson")/.test(text)) return text;
     try {
       const data = JSON.parse(text);
       return patchPayload(data) ? JSON.stringify(data) : text;

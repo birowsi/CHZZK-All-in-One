@@ -1,9 +1,9 @@
 {
   "name": "chzzk-all-in-one",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "author": "hanbi",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "test": "node --test"
   },

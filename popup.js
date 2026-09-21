@@ -89,8 +89,8 @@ async function init() {
     }
     const result = await api.tabs.sendMessage(tab.id, { type: "test-following-alert" }).catch(() => null);
     if (!result?.shown) status.textContent = "알림 기능을 켜고 페이지를 새로고침해 주세요.";
-    else if (result.apiOk) status.textContent = `팝업 표시 · API 정상 (${result.count}개 채널)`;
-    else status.textContent = `팝업 표시 · API 실패 (${result.error || "로그인 상태 확인"})`;
+    else if (result.apiOk) status.textContent = `팝업 표시 · 팔로잉 사이드바 감지 (${result.count}개 방송)`;
+    else status.textContent = `팝업 표시 · ${result.error || "팔로잉 사이드바 확인"}`;
   });
 }
 

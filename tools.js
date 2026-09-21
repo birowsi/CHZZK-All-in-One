@@ -18,6 +18,31 @@
   const isBlockedPromoNotice = (text) => isAdBlockNotice(text) || cheatKeyTimeMachinePattern.test(text || "");
   const needsFirefoxAudioMonitor = (userAgent, audioTrackCount) => userAgent.includes("Firefox") && audioTrackCount > 0;
   const calculateTrendOffset = (barLeft, currentOffset, sidebarRight) => Math.max(0, Math.ceil(sidebarRight - (barLeft - currentOffset)));
+  const clampSeekTime = (current, delta, start, end) => Math.max(start, Math.min(end, current + delta));
+  const channelIdFromHref = (href) => String(href || "").match(/^\/live\/([^/?#]+)/)?.[1] || "";
+  const isFollowingSectionLabel = (text) => /^(?:팔로잉|팔로우)(?:\s*(?:채널|방송))?$|^following(?:\s+(?:channels?|live))?$/i.test(String(text || "").replace(/\s+/g, " ").trim());
+  const compressorDefaults = { threshold: -50, knee: 40, ratio: 12, attack: 0, release: 0.25 };
+
+  function connectAudioGraph(graph, compressed) {
+    if (!graph || graph.failed) return false;
+    for (const node of [graph.source, graph.compressor, graph.gain]) {
+      try { node?.disconnect?.(); } catch (_) {}
+    }
+    try {
+      if (compressed) {
+        graph.source.connect(graph.compressor);
+        graph.compressor.connect(graph.gain);
+        graph.gain.connect(graph.context.destination);
+      } else {
+        graph.source.connect(graph.context.destination);
+      }
+      graph.mode = compressed ? "compressed" : "bypass";
+      return true;
+    } catch (_) {
+      graph.mode = "";
+      return false;
+    }
+  }
 
   function selectTrendStreams(liveList, previous, threshold = 1000, count = 10) {
     const firstRun = previous.size === 0;
@@ -46,7 +71,7 @@
 
   const trendThumbnail = (live) => (live.liveImageUrl || live.thumbnailImageUrl || live.defaultThumbnailImageUrl || "").replaceAll("{type}", "720");
 
-  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, needsFirefoxAudioMonitor, calculateTrendOffset, selectTrendStreams, trendThumbnail };
+  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, needsFirefoxAudioMonitor, calculateTrendOffset, clampSeekTime, channelIdFromHref, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail };
   if (typeof document === "undefined") return;
   if (globalThis.__HANBI_CHZZK_TOOLS__) return;
   globalThis.__HANBI_CHZZK_TOOLS__ = true;
@@ -62,15 +87,25 @@
     trends: true,
     gridBypass: true,
     sharpness: false,
+    arrowSeek: true,
+    videoFilters: false,
+    hideDonation: false,
+    chatFontSizeEnabled: false,
+    sidebarRefresh: true,
+    hoverPreview: true,
   };
-  const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100 };
+  const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100, brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
   let features = { ...defaults };
   let trendOptions = { ...trendDefaults };
   let recording = null;
   let scheduled = false;
   let trendTimer = null;
   let followingTimer = null;
+  let followingUpdateTimer = null;
+  let sidebarRefreshTimer = null;
   let followingUpdating = false;
+  let followingMutationPending = false;
+  let followingEmptySince = 0;
   let trendUpdating = false;
   let trendLayoutScheduled = false;
   let trendSidebar = null;
@@ -79,9 +114,9 @@
   let previewUrl = null;
   const preparedVideos = new WeakSet();
   const originalMessages = new WeakMap();
-  const audioContexts = new WeakMap();
+  let compressorData = null;
   let compressorEnabled = localStorage.getItem("hanbi_comp_enabled") === "true";
-  let compressorStrength = Number(localStorage.getItem("hanbi_comp_strength")) || 12;
+  let compressorGain = Math.max(0, Math.min(2, Number(localStorage.getItem("knifeGain")) || 1));
 
   const isLive = () => /^\/live\/[^/]+/.test(location.pathname);
 
@@ -370,43 +405,103 @@
     status(stream.getAudioTracks().length ? "녹화를 시작했습니다." : "오디오 없이 녹화를 시작했습니다.");
   }
 
+  // Derived from cheese-knife's MIT-licensed MediaElementSource → DynamicsCompressor → Gain graph.
+  function closeCompressor() {
+    if (!compressorData) return;
+    connectAudioGraph(compressorData, false);
+    compressorData.ctx.close().catch(() => {});
+    compressorData = null;
+  }
+
   function getCompressor(v) {
-    let data = audioContexts.get(v);
-    if (!data) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const source = ctx.createMediaElementSource(v);
-      const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -30;
-      comp.knee.value = 10;
-      comp.attack.value = 0;
-      comp.release.value = 0.25;
-      data = { ctx, source, comp, connected: false };
-      audioContexts.set(v, data);
+    if (compressorData?.video === v) return compressorData;
+    closeCompressor();
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return null;
+    let ctx;
+    try {
+      ctx = new Context();
+      compressorData = {
+        video: v,
+        context: ctx,
+        ctx,
+        source: ctx.createMediaElementSource(v),
+        compressor: ctx.createDynamicsCompressor(),
+        gain: ctx.createGain(),
+        mode: "",
+      };
+      for (const [name, value] of Object.entries(compressorDefaults)) compressorData.compressor[name].value = value;
+      return compressorData;
+    } catch (error) {
+      ctx?.close?.().catch(() => {});
+      compressorData = null;
+      console.warn("[CHZZK All-in-One] Compressor Error", error);
+      return null;
     }
-    return data;
   }
 
   function applyCompressorState(v) {
-    if (!v) return;
-    try {
-      const data = getCompressor(v);
-      if (compressorEnabled) {
-        if (!data.connected) {
-          data.source.disconnect();
-          data.source.connect(data.comp);
-          data.comp.connect(data.ctx.destination);
-          data.connected = true;
-        }
-        data.comp.ratio.value = compressorStrength;
-      } else {
-        if (data.connected) {
-          data.source.disconnect();
-          data.comp.disconnect();
-          data.source.connect(data.ctx.destination);
-          data.connected = false;
-        }
-      }
-    } catch (e) { console.warn("[CHZZK All-in-One] Compressor Error", e); }
+    if (compressorData?.video !== v) closeCompressor();
+    if (!v || (!compressorEnabled && !compressorData)) return;
+    const data = getCompressor(v);
+    if (!data) return;
+    data.gain.gain.value = compressorGain;
+    connectAudioGraph(data, compressorEnabled);
+    if (compressorEnabled) data.ctx.resume().catch(() => {});
+  }
+
+  function resumeCompressor() {
+    if (compressorEnabled && compressorData?.ctx.state === "suspended") compressorData.ctx.resume().catch(() => {});
+  }
+
+  function ensureCompressorControl() {
+    const volumeControl = document.querySelector(".pzp-pc__volume-control, .pzp-pc-volume-control");
+    let root = document.getElementById("hanbi-audio-compressor");
+    if (!volumeControl) {
+      root?.remove();
+      return;
+    }
+    if (!root) {
+      root = document.createElement("span");
+      root.id = "hanbi-audio-compressor";
+      root.className = "pzp-pc__volume-control knife-comp";
+
+      const compBtn = button("오디오 컴프레서", "COMP OFF", () => {
+        compressorEnabled = !compressorEnabled;
+        localStorage.setItem("hanbi_comp_enabled", compressorEnabled);
+        syncCompressorControl(root);
+        applyCompressorState(video());
+      });
+      compBtn.dataset.compressorToggle = "1";
+
+      const compSlider = document.createElement("input");
+      compSlider.type = "range";
+      compSlider.min = "0";
+      compSlider.max = "2";
+      compSlider.step = "0.01";
+      compSlider.ariaLabel = "컴프레서 보정 게인";
+      compSlider.addEventListener("input", (event) => {
+        compressorGain = Number(event.target.value);
+        localStorage.setItem("knifeGain", compressorGain);
+        syncCompressorControl(root);
+        applyCompressorState(video());
+      });
+      root.append(compBtn, compSlider);
+    }
+    if (root.previousElementSibling !== volumeControl) volumeControl.insertAdjacentElement("afterend", root);
+    syncCompressorControl(root);
+  }
+
+  function syncCompressorControl(root) {
+    const buttonElement = root.querySelector("[data-compressor-toggle]");
+    const slider = root.querySelector("input[type='range']");
+    buttonElement.textContent = compressorEnabled ? "COMP ON" : "COMP OFF";
+    buttonElement.classList.toggle("is-recording", compressorEnabled);
+    buttonElement.setAttribute("aria-pressed", String(compressorEnabled));
+    slider.value = compressorGain;
+    slider.hidden = !compressorEnabled;
+    slider.title = `컴프레서 보정 게인 ${Math.round(compressorGain * 100)}%`;
+    slider.setAttribute("aria-valuetext", `${Math.round(compressorGain * 100)}%`);
   }
 
   function ensureTools() {
@@ -421,44 +516,6 @@
     const root = document.createElement("span");
     root.id = "hanbi-player-tools";
     root.dataset.signature = signature;
-    root.style.display = "inline-flex";
-    root.style.alignItems = "center";
-    
-    // Compressor UI
-    const compWrapper = document.createElement("span");
-    compWrapper.className = "hanbi-comp-wrapper";
-    compWrapper.style.display = "inline-flex";
-    compWrapper.style.alignItems = "center";
-    compWrapper.style.marginRight = "4px";
-
-    const compBtn = button("소리 정규화", compressorEnabled ? "COMP ON" : "COMP OFF", () => {
-      compressorEnabled = !compressorEnabled;
-      localStorage.setItem("hanbi_comp_enabled", compressorEnabled);
-      compBtn.textContent = compressorEnabled ? "COMP ON" : "COMP OFF";
-      compBtn.classList.toggle("is-recording", compressorEnabled);
-      compSlider.style.display = compressorEnabled ? "inline-block" : "none";
-      applyCompressorState(video());
-    });
-    if (compressorEnabled) compBtn.classList.add("is-recording");
-    
-    const compSlider = document.createElement("input");
-    compSlider.type = "range";
-    compSlider.min = "1";
-    compSlider.max = "20";
-    compSlider.value = compressorStrength;
-    compSlider.title = "컴프레서 강도 조절";
-    compSlider.style.width = "60px";
-    compSlider.style.display = compressorEnabled ? "inline-block" : "none";
-    compSlider.style.margin = "0 4px";
-    compSlider.style.cursor = "pointer";
-    compSlider.addEventListener("input", (e) => {
-      compressorStrength = Number(e.target.value);
-      localStorage.setItem("hanbi_comp_strength", compressorStrength);
-      applyCompressorState(video());
-    });
-
-    compWrapper.append(compBtn, compSlider);
-    root.appendChild(compWrapper);
 
     if (features.recorder) {
       const recordButton = button("녹화 시작/중지", "REC", () => toggleRecording(recordButton));
@@ -471,11 +528,13 @@
 
   function prepareVideo() {
     const source = video();
-    if (!source || preparedVideos.has(source)) return;
-    preparedVideos.add(source);
-    if (features.autoUnmute && isLive()) {
-      source.muted = false;
-      source.addEventListener("loadeddata", () => { source.muted = false; }, { once: true });
+    if (!source) return;
+    if (!preparedVideos.has(source)) {
+      preparedVideos.add(source);
+      if (features.autoUnmute && isLive()) source.muted = false;
+      source.addEventListener("loadeddata", () => {
+        if (features.autoUnmute && isLive()) source.muted = false;
+      }, { once: true });
     }
     applyCompressorState(source);
   }
@@ -530,30 +589,84 @@
 
   async function updateFollowingAlerts() {
     if (!features.followingAlerts || followingUpdating) return;
+    const { ready, entries } = collectFollowingEntries();
+    if (!ready) return;
+    if (!entries.length) {
+      followingEmptySince ||= Date.now();
+      if (Date.now() - followingEmptySince < 8_000) return;
+    } else {
+      followingEmptySince = 0;
+    }
     followingUpdating = true;
     try {
-      const claim = await api.runtime.sendMessage({ type: "claim-following-poll" });
-      if (!claim?.granted) return;
-      const entries = await fetchFollowingEntries();
       const result = await api.runtime.sendMessage({ type: "following-snapshot", entries });
       for (const entry of result?.alerts || []) showFollowingAlert(entry);
     } catch (_) {}
     finally { followingUpdating = false; }
   }
 
-  async function fetchFollowingEntries() {
-    const response = await fetch("https://api.chzzk.naver.com/service/v1/channels/followings/live", { credentials: "include" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const entries = HanbiFollowingLogic.normalizeFollowingPayload(await response.json());
-    if (!entries) throw new Error("응답 형식 오류");
-    return entries;
+  function followingSections() {
+    const sections = new Set();
+    for (const section of document.querySelectorAll("[class*='following'], [data-testid*='following' i], [aria-label*='팔로잉'], [aria-label*='팔로우']")) {
+      if (!section.matches("a, button") && section.querySelector("a[href^='/live/']")) sections.add(section);
+    }
+    for (const label of document.querySelectorAll("h1, h2, h3, h4, strong, [role='heading'], [class*='title'], [class*='header']")) {
+      if (!isFollowingSectionLabel(label.textContent) || label.closest("a, button")) continue;
+      let section = null;
+      let parent = label.parentElement;
+      for (let depth = 0; parent && depth < 5; depth += 1, parent = parent.parentElement) {
+        if (parent.querySelector("a[href^='/live/']")) {
+          section = parent;
+          break;
+        }
+      }
+      sections.add(section || label.parentElement);
+    }
+    const roots = [...sections].filter(Boolean);
+    return roots.filter((root) => !roots.some((other) => other !== root && root.contains(other)));
+  }
+
+  function collectFollowingEntries() {
+    const sections = followingSections();
+    const entries = new Map();
+    for (const section of sections) {
+      for (const link of section.querySelectorAll("a[href^='/live/']")) {
+        const channelId = channelIdFromHref(link.getAttribute("href"));
+        if (!channelId || entries.has(channelId)) continue;
+        const image = link.querySelector("img") || link.closest("li, [class*='item']")?.querySelector("img");
+        const channelName = link.querySelector("[class*='channel_name'], [class*='name']")?.textContent?.trim()
+          || image?.alt?.trim() || link.textContent?.trim().split("\n")[0] || "팔로잉 채널";
+        const liveTitle = link.querySelector("[class*='live_title'], [class*='title']")?.textContent?.trim()
+          || "방송을 시작했습니다";
+        entries.set(channelId, {
+          channelId,
+          channelName,
+          channelImageUrl: image?.currentSrc || image?.src || "",
+          liveImageUrl: image?.currentSrc || image?.src || "",
+          liveTitle,
+          liveKey: "open",
+        });
+      }
+    }
+    return { ready: sections.length > 0, entries: [...entries.values()] };
+  }
+
+  function scheduleFollowingUpdate() {
+    if (!features.followingAlerts || followingUpdateTimer) return;
+    followingUpdateTimer = setTimeout(() => {
+      followingUpdateTimer = null;
+      updateFollowingAlerts();
+    }, 250);
   }
 
   function resetFollowingTimer() {
     clearInterval(followingTimer);
-    followingTimer = features.followingAlerts ? setInterval(updateFollowingAlerts, 15_000) : null;
+    followingTimer = features.followingAlerts ? setInterval(updateFollowingAlerts, 5_000) : null;
     if (features.followingAlerts) updateFollowingAlerts();
-    else document.getElementById("hanbi-following-alerts")?.remove();
+    else {
+      followingEmptySince = 0;
+      document.getElementById("hanbi-following-alerts")?.remove();
+    }
   }
 
   function rememberAndRestoreBlindMessages() {
@@ -594,6 +707,85 @@
       replacement.textContent = original;
       if (!replacement.isConnected) text.after(replacement);
     }
+  }
+
+  function handleArrowSeek(event) {
+    if (!features.arrowSeek || !["ArrowLeft", "ArrowRight"].includes(event.key) || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (event.target.closest?.("input, textarea, select, [contenteditable='true'], [role='textbox']")) return;
+    const source = video();
+    if (!source) return;
+    const ranges = source.seekable;
+    const start = ranges?.length ? ranges.start(0) : 0;
+    const end = ranges?.length ? ranges.end(ranges.length - 1) : (Number.isFinite(source.duration) ? source.duration : source.currentTime + 5);
+    source.currentTime = clampSeekTime(source.currentTime, event.key === "ArrowLeft" ? -5 : 5, start, end);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+
+  function applyChatFeatures() {
+    let style = document.getElementById("hanbi-chat-improvements");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "hanbi-chat-improvements";
+      document.head.appendChild(style);
+    }
+    style.textContent = [
+      features.hideDonation ? "[class*='live_chatting_list_donation_'], [class*='donation'][class*='chat'] { display: none !important; }" : "",
+      features.chatFontSizeEnabled ? `[class*='live_chatting_message_text'], [data-message-text] { font-size: ${trendOptions.chatFontSize}px !important; }` : "",
+    ].filter(Boolean).join("\n");
+  }
+
+  function findFollowingRefreshButton() {
+    for (const section of followingSections()) {
+      const button = [...section.querySelectorAll("button[aria-label], [role='button'][aria-label]")]
+        .find((item) => /새로고침|refresh/i.test(item.getAttribute("aria-label") || "") && !item.disabled);
+      if (button) return button;
+    }
+    return null;
+  }
+
+  function resetSidebarRefreshTimer() {
+    clearInterval(sidebarRefreshTimer);
+    sidebarRefreshTimer = features.sidebarRefresh ? setInterval(() => {
+      if (document.visibilityState === "visible" && navigator.onLine !== false) findFollowingRefreshButton()?.click();
+    }, 30_000) : null;
+  }
+
+  function sidebarLiveLink(target) {
+    const link = target.closest?.("a[href^='/live/']");
+    if (!features.hoverPreview || !link || link.closest("#hanbi-trends")) return null;
+    return followingSections().some((section) => section.contains(link)) ? link : null;
+  }
+
+  function showSidebarPreview(link) {
+    const sourceImage = link.querySelector("img") || link.closest("li, [class*='item']")?.querySelector("img");
+    const src = sourceImage?.currentSrc || sourceImage?.src;
+    if (!src) return;
+    let preview = document.getElementById("hanbi-sidebar-hover-preview");
+    if (!preview) {
+      preview = document.createElement("aside");
+      preview.id = "hanbi-sidebar-hover-preview";
+      preview.innerHTML = "<img alt=''><strong></strong>";
+      document.body.appendChild(preview);
+    }
+    preview.querySelector("img").src = src;
+    preview.querySelector("strong").textContent = sourceImage.alt || link.textContent.trim() || "라이브 미리보기";
+    preview.hidden = false;
+    const rect = link.getBoundingClientRect();
+    const width = Math.min(320, innerWidth - 16);
+    preview.style.width = `${width}px`;
+    preview.style.left = `${Math.max(8, Math.min(innerWidth - width - 8, rect.right + 10))}px`;
+    preview.style.top = `${Math.max(8, Math.min(innerHeight - 210, rect.top))}px`;
+  }
+
+  function handleSidebarPreviewOver(event) {
+    const link = sidebarLiveLink(event.target);
+    if (link && !link.contains(event.relatedTarget)) showSidebarPreview(link);
+  }
+
+  function handleSidebarPreviewOut(event) {
+    const link = sidebarLiveLink(event.target);
+    if (link && !link.contains(event.relatedTarget)) document.getElementById("hanbi-sidebar-hover-preview")?.setAttribute("hidden", "");
   }
 
   function hideTrendPreview() {
@@ -738,11 +930,38 @@
     trendTimer = features.trends ? setInterval(updateTrends, Math.max(1, trendOptions.refreshMinutes) * 60_000) : null;
   }
 
+  function applyVideoFilter(source) {
+    const enabled = features.videoFilters || features.sharpness;
+    if (!enabled) {
+      source.style.filter = "";
+      return;
+    }
+    let svg = document.getElementById("hanbi-video-filter-svg");
+    if (!svg) {
+      const namespace = "http://www.w3.org/2000/svg";
+      svg = document.createElementNS(namespace, "svg");
+      svg.id = "hanbi-video-filter-svg";
+      svg.setAttribute("aria-hidden", "true");
+      const filter = document.createElementNS(namespace, "filter");
+      filter.id = "hanbi-video-sharpness";
+      const matrix = document.createElementNS(namespace, "feConvolveMatrix");
+      matrix.setAttribute("order", "3 3");
+      filter.appendChild(matrix);
+      svg.appendChild(filter);
+      document.body.appendChild(svg);
+    }
+    const amount = Math.max(0, Number(trendOptions.sharpnessAmount) || 0) / 100;
+    svg.querySelector("feConvolveMatrix").setAttribute("kernelMatrix", `0 -${amount} 0 -${amount} ${1 + 4 * amount} -${amount} 0 -${amount} 0`);
+    source.style.filter = `brightness(${trendOptions.brightnessAmount}%) contrast(${trendOptions.contrastAmount}%) url("#hanbi-video-sharpness")`;
+  }
+
   function applyFeatures() {
+    ensureCompressorControl();
     ensureTools();
     prepareVideo();
     removeAdPopup();
     rememberAndRestoreBlindMessages();
+    applyChatFeatures();
     if (features.trends) {
       if (!document.getElementById("hanbi-trends")) updateTrends();
       else scheduleTrendLayout();
@@ -750,26 +969,28 @@
       document.getElementById("hanbi-trends")?.remove();
       document.getElementById("hanbi-trend-preview")?.remove();
     }
+    if (!features.hoverPreview) document.getElementById("hanbi-sidebar-hover-preview")?.remove();
 
     const source = video();
-    if (source) {
-      let filterString = "";
-      if (features.videoFilters) {
-        filterString += `brightness(${trendOptions.brightnessAmount}%) contrast(${trendOptions.contrastAmount}%) `;
-      }
-      if (features.sharpness) {
-        filterString += `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='sharpness'><feConvolveMatrix order='3 3' kernelMatrix='0 -${trendOptions.sharpnessAmount / 100} 0 -${trendOptions.sharpnessAmount / 100} ${1 + 4 * (trendOptions.sharpnessAmount / 100)} -${trendOptions.sharpnessAmount / 100} 0 -${trendOptions.sharpnessAmount / 100} 0' /></filter></svg>#sharpness")`;
-      }
-      source.style.filter = filterString.trim() || "none";
-    }
+    if (source) applyVideoFilter(source);
   }
 
-  function schedule() {
+  function schedule(mutations) {
+    const followingChanged = mutations?.some((mutation) => [...mutation.addedNodes].some((node) => {
+      if (!(node instanceof Element)) return false;
+      const link = node.matches("a[href^='/live/']") ? node : node.querySelector("a[href^='/live/']");
+      return Boolean(link?.closest("aside, [class*='navigator'], [class*='sidebar'], [class*='side_bar']"));
+    }));
+    if (followingChanged) followingMutationPending = true;
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
       applyFeatures();
+      if (followingMutationPending) {
+        followingMutationPending = false;
+        scheduleFollowingUpdate();
+      }
     });
   }
 
@@ -780,6 +1001,7 @@
     updateTrends();
     resetTrendTimer();
     resetFollowingTimer();
+    resetSidebarRefreshTimer();
   });
 
   api.runtime.onMessage.addListener(async (message) => {
@@ -790,8 +1012,8 @@
     });
     if (!shown) return { shown: false };
     try {
-      const entries = await fetchFollowingEntries();
-      return { shown: true, apiOk: true, count: entries.length };
+      const { ready, entries } = collectFollowingEntries();
+      return { shown: true, apiOk: ready, count: entries.length, error: ready ? "" : "팔로잉 사이드바를 찾지 못함" };
     } catch (error) {
       return { shown: true, apiOk: false, error: error.message };
     }
@@ -809,14 +1031,23 @@
       updateTrends();
       resetTrendTimer();
       resetFollowingTimer();
+      resetSidebarRefreshTimer();
     }
   });
 
+  document.addEventListener("keydown", handleArrowSeek, true);
+  document.addEventListener("pointerdown", resumeCompressor, true);
+  document.addEventListener("keydown", resumeCompressor, true);
+  document.addEventListener("pointerover", handleSidebarPreviewOver);
+  document.addEventListener("pointerout", handleSidebarPreviewOut);
   new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener("pagehide", () => {
     clearInterval(trendTimer);
     clearInterval(followingTimer);
+    clearInterval(sidebarRefreshTimer);
+    clearTimeout(followingUpdateTimer);
     trendSidebarObserver?.disconnect();
+    closeCompressor();
     hideTrendPreview();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, { once: true });

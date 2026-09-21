@@ -1097,7 +1097,6 @@ setInterval(() => {
         }
     }
 }, 1000);
-
 // 파워 개수 표시용 SVG 아이콘
 const POWER_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="none"><mask id="mask0_1071_43807" width="16" height="16" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type: alpha;"><path fill="currentColor" d="M6.795 2.434a.9.9 0 0 1 .74.388l.064.109 1.318 2.635H5.983l-.157-.313-.758-1.517a.9.9 0 0 1 .805-1.302h.922Z"></path><path fill="currentColor" fill-rule="evenodd" d="M12.148 4.434c.857 0 1.508.628 1.912 1.369.415.761.655 1.775.655 2.864 0 1.088-.24 2.102-.655 2.864-.404.74-1.055 1.369-1.912 1.369H4c-.857 0-1.508-.63-1.911-1.37-.416-.761-.655-1.775-.655-2.863 0-1.089.239-2.103.655-2.864.403-.74 1.054-1.37 1.911-1.37h8.148ZM4 5.566c-.248 0-.597.192-.917.779-.308.565-.517 1.385-.517 2.322 0 .936.209 1.756.517 2.321.32.587.67.779.917.779.248 0 .597-.192.917-.779.308-.565.517-1.385.517-2.321 0-.937-.209-1.757-.517-2.322-.32-.587-.67-.779-.917-.779Zm2.526 3.868a6.433 6.433 0 0 1-.222 1.132h5.363l.058-.002a.567.567 0 0 0 0-1.128l-.058-.002H6.526ZM6.284 6.7c.109.353.188.733.234 1.132h.815l.058-.002a.567.567 0 0 0 0-1.128l-.058-.002h-1.05Zm3.316 0a.567.567 0 1 0 0 1.132h3.923a4.83 4.83 0 0 0-.293-1.132H9.6Z" clip-rule="evenodd"></path><path fill="currentColor" d="M5.434 8.667c0-.937-.209-1.757-.517-2.322-.32-.587-.67-.779-.917-.779-.248 0-.597.192-.917.779-.308.565-.517 1.385-.517 2.322 0 .936.209 1.756.517 2.321.32.587.67.779.917.779.248 0 .597-.192.917-.779.308-.565.517-1.385.517-2.321Zm1.132 0c0 1.088-.239 2.102-.655 2.864C5.508 12.27 4.857 12.9 4 12.9s-1.508-.63-1.911-1.37c-.416-.761-.655-1.775-.655-2.863 0-1.089.239-2.103.655-2.864.403-.74 1.054-1.37 1.911-1.37s1.508.63 1.911 1.37c.416.761.655 1.775.655 2.864Z"></path><path fill="currentColor" d="M4.667 8.667C4.667 9.403 4.368 10 4 10c-.368 0-.667-.597-.667-1.333 0-.737.299-1.334.667-1.334.368 0 .667.597.667 1.334Z"></path></mask><g mask="url(#mask0_1071_43807)"><path fill="currentColor" d="M0 0h16v16H0z"></path></g></svg>`;
 
@@ -1612,87 +1611,3 @@ setInterval(() => {
         updateClockDisplay();
     }
 }, 1000);
-
-// --- CHEESE-KNIFE FEATURES INTEGRATION ---
-(async function initCheeseKnifeFeatures() {
-    const api = globalThis.browser ?? globalThis.chrome;
-    if (!api) return;
-
-    const featureDefaults = { audioCompressor: false, arrowSeek: true, videoFilters: false, hideDonation: false, chatFontSizeEnabled: false, sidebarRefresh: true, hoverPreview: true };
-    const trendDefaults = { brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
-
-    const { features = {} } = await api.storage.local.get("features");
-    const { trendOptions = {} } = await api.storage.local.get("trendOptions");
-    const mergedFeatures = { ...featureDefaults, ...features };
-    const mergedTrends = { ...trendDefaults, ...trendOptions };
-
-
-
-
-
-    // 3. Arrow Seek
-    if (mergedFeatures.arrowSeek) {
-        document.addEventListener("keydown", (e) => {
-            if (e.target.matches('input, textarea, [contenteditable="true"]')) return;
-            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-                const video = document.querySelector("video");
-                if (video && video.duration) {
-                    const delta = e.key === "ArrowLeft" ? -5 : 5;
-                    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta));
-                    e.preventDefault();
-                }
-            }
-        });
-    }
-
-    // 4. Hide Donation & Font Size
-    const chatStyle = document.createElement("style");
-    chatStyle.id = "hanbi-chat-improvements";
-    let chatCss = "";
-    if (mergedFeatures.hideDonation) {
-        chatCss += `div[class*="live_chatting_list_donation_"] { display: none !important; }\n`;
-    }
-    if (mergedFeatures.chatFontSizeEnabled) {
-        chatCss += `span[class*="live_chatting_message_text"] { font-size: ${mergedTrends.chatFontSize}px !important; }\n`;
-    }
-    if (chatCss) {
-        chatStyle.textContent = chatCss;
-        document.head.appendChild(chatStyle);
-    }
-
-    // 5. Sidebar Refresh
-    if (mergedFeatures.sidebarRefresh) {
-        setInterval(() => {
-            const refreshBtn = document.querySelector('button[class*="navigator_button_refresh__"]');
-            if (refreshBtn) refreshBtn.click();
-        }, 30 * 1000);
-    }
-
-    // 6. Hover Preview (Sidebar)
-    if (mergedFeatures.hoverPreview) {
-        document.addEventListener("mouseover", (e) => {
-            const link = e.target.closest('a[href^="/live/"]');
-            if (!link || !link.closest('nav')) return;
-            let tooltip = document.getElementById("hanbi-sidebar-hover-preview");
-            if (!tooltip) {
-                document.body.insertAdjacentHTML('beforeend', '<div id="hanbi-sidebar-hover-preview" style="position: fixed; z-index: 99999; width: 320px; background: #141517; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #2d303a; overflow: hidden; pointer-events: none; display: none; color: #fff;"><img style="width: 100%; height: auto; display: block; background: #000;"></div>');
-                tooltip = document.getElementById("hanbi-sidebar-hover-preview");
-            }
-            const channelId = link.getAttribute('href').split('/').pop();
-            const previewImg = tooltip.querySelector('img');
-            // Cache buster for live thumb
-            previewImg.src = `https://livecloud.pstatic.net/api/v1/stream/${channelId}/thumbnail?_=${Date.now()}`;
-            
-            const rect = link.getBoundingClientRect();
-            tooltip.style.left = `${rect.right + 10}px`;
-            tooltip.style.top = `${rect.top}px`;
-            tooltip.style.display = "block";
-            
-            link.addEventListener("mouseleave", () => {
-                tooltip.style.display = "none";
-                previewImg.src = "";
-            }, { once: true });
-        });
-    }
-
-})();

@@ -725,6 +725,37 @@
                 margin: 20px;
             }
         }
+
+        /* hanbi monochrome UI */
+        :root {
+            --bg-primary: #0d0d0d;
+            --bg-secondary: #151515;
+            --bg-tertiary: #222;
+            --text-primary: #f2f2f2;
+            --text-secondary: #aaa;
+            --text-muted: #777;
+            --border-color: #343434;
+            --accent-color: #e8e8e8;
+            --accent-hover: #fff;
+            --success-color: #ddd;
+            --danger-color: #999;
+            --gradient-bg: #090909;
+            --glass-shadow: none;
+            --glass-blur: none;
+        }
+        body { background: #090909; transition: none; }
+        .container { border-radius: 6px; background: #0d0d0d; box-shadow: none; backdrop-filter: none; transition: none; }
+        .header { background: #101010; }
+        .header h1 { text-shadow: none; }
+        .period-card, .log-item { border-radius: 5px; box-shadow: none; backdrop-filter: none; transition: border-color 80ms steps(2, end); }
+        .period-card:hover, .log-item:hover { transform: none; border-color: #666; box-shadow: none; }
+        .filter-group select, .filter-group input, .edit-modal, .form-input { border-radius: 4px; box-shadow: none; }
+        .filter-group select:focus, .filter-group input:focus, .form-input:focus { border-color: #ddd; box-shadow: none; }
+        .import-export-btn, .detail-btn, .method-badge, .edit-btn, .delete-btn, .test-btn, .clear-logs, .close-btn, .cancel-btn, .save-btn, .modal-delete-btn { border-radius: 4px; transition: background 80ms steps(2, end), border-color 80ms steps(2, end); }
+        .import-export-btn.export, .save-btn, .edit-btn:hover, .delete-btn:hover, .clear-logs, .edit-modal .modal-delete-btn { border: 1px solid #777 !important; color: #fff !important; background: #252525 !important; }
+        .method-follow, .method-view, .method-remember, .method-prediction { border: 1px solid #444; color: #ddd; background: #202020; }
+        .amount.amount-pos, .amount.amount-neg, .channel-link:hover, .period-value { color: #eee; }
+        .spinner { border-color: #333; border-top-color: #ddd; animation: spin 800ms steps(8, end) infinite; }
     </style>
 </head>
 <body>
