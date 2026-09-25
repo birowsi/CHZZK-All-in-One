@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CHZZK All-in-One by hanbi",
   "short_name": "CHZZK AIO",
-  "version": "1.1.10",
+  "version": "1.1.11",
   "description": "hanbi의 CHZZK 통합 도구: GRID/P2P·광고 우회, 최고 화질, 팔로잉 방송 알림, 녹화·변환·스크린샷, 통나무 자동 획득, 선명도 조절.",
   "author": "hanbi",
   "browser_specific_settings": {

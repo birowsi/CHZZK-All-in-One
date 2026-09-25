@@ -15,6 +15,8 @@ Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
 - cheese-knife 방식의 HLS 버퍼 보존·강제 라이브 복귀 방지·`buffered` 탐색 (현재 Firefox 실방송 검증 필요)
 - 오디오 컴프레서, 밝기·대비·선명도, 채팅·사이드바 보조 기능
 
+REC의 `원본 WebM`은 CHZZK 전송 파일의 무손실 복사본이 아니라 Firefox MediaRecorder가 재인코딩한 결과입니다. 1.1.11부터 영상 해상도에 따라 목표 비트레이트를 높여 기존 기본값의 뭉개짐을 줄입니다. 녹화 파일 크기와 CPU 사용량이 늘 수 있으며, 방송 원본과 바이트 단위로 같은 품질은 보장하지 않습니다.
+
 ## Firefox 설치
 
 `build.ps1`이 만드는 `.xpi`는 ZIP의 복사본인 **미서명 개발용 파일**입니다. 일반 Firefox의 영구 설치에는 Mozilla 서명본이 필요합니다. 서명 전에는 `about:debugging#/runtime/this-firefox`의 **임시 부가 기능 로드**에서 `manifest.json`을 선택해 테스트할 수 있습니다.
@@ -22,8 +24,8 @@ Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
 ### 가장 쉬운 서명 방법: 웹에서 직접 업로드
 
 1. 평소 쓰는 브라우저에서 [AMO 개발자 허브](https://addons.mozilla.org/developers/)에 Mozilla 계정을 만들고 로그인합니다. 일반 Firefox용 서명에는 계정이 필요합니다. Codex 브라우저에서 로그인할 필요는 없습니다.
-2. **새 부가 기능 제출** → **On your own(직접 배포)**을 선택합니다. 공개 목록에 올리는 옵션이 아닙니다.
-3. 이 폴더의 `dist/chzzk-all-in-one-firefox-v1.1.10.zip`을 업로드하고 화면의 검증·심사 절차를 마칩니다. ZIP은 이미 만들어져 있습니다. 이후 소스를 수정했다면 `.\build.ps1 -ZipOnly`로 새 ZIP을 만듭니다.
+2. 이미 1.1.10을 승인받았다면 **기존 부가 기능 관리 페이지의 새 버전 업로드**를 선택합니다. 처음 제출하는 경우에만 **새 부가 기능 제출** → **On your own(직접 배포)**을 선택합니다.
+3. 이 폴더의 `dist/chzzk-all-in-one-firefox-v1.1.11.zip`을 업로드하고 화면의 검증·심사 절차를 마칩니다. ZIP은 이미 만들어져 있습니다. 이후 소스를 수정했다면 `.\build.ps1 -ZipOnly`로 새 ZIP을 만듭니다.
 4. [AMO 버전 페이지에서 Mozilla가 서명한 XPI를 내려받습니다](https://extensionworkshop.com/documentation/publish/submitting-an-add-on/). 제출 즉시 발급되지 않을 수 있으며, 검증 오류가 있으면 AMO의 오류 내용을 확인해야 합니다.
 
 반복 서명이 필요할 때만 API 키를 발급해 `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET` 환경 변수를 설정하고 `.\sign.ps1`을 실행할 수 있습니다. 이 스크립트는 패키지를 Mozilla에 제출하고 서명본을 `dist/signed-v<버전>/`에 받습니다. 키는 저장소나 패키지에 넣지 않습니다. 스크립트 실행에는 Node.js 22 이상과 npm이 필요하지만 Firefox 사용 시 별도 프로그램은 필요 없습니다.

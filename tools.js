@@ -10,6 +10,12 @@
     ].find((type) => Recorder.isTypeSupported(type)) || "";
   }
 
+  function recordingVideoBitrate(source) {
+    const pixels = source.videoWidth * source.videoHeight;
+    const target = Number.isFinite(pixels) && pixels > 0 ? 12_000_000 * pixels / (1920 * 1080) : 12_000_000;
+    return Math.round(Math.max(3_000_000, Math.min(16_000_000, target)));
+  }
+
   const blindNoticePattern = /(?:클린봇이\s*부적절한\s*표현을\s*감지|(?:관리자|운영자).*?(?:블라인드|숨김|삭제|차단|가림)|(?:블라인드|숨김|삭제|차단|가림).*?(?:메시지|채팅))/i;
   const adBlockNoticePattern = /광고\s*차단\s*프로그램.*사용\s*중/i;
   const cheatKeyTimeMachinePattern = /치트키를\s*구매하면\s*타임머신\s*기능을\s*이용할\s*수\s*있어요/i;
@@ -102,7 +108,7 @@
   const trendThumbnail = (live) => (live.liveImageUrl || live.thumbnailImageUrl || live.defaultThumbnailImageUrl || "").replaceAll("{type}", "720");
   const actualQualityHeight = (media) => media?.readyState >= 2 && !media.error && Number.isFinite(media.videoHeight) && media.videoHeight > 0 ? media.videoHeight : null;
 
-  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
+  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
   if (typeof document === "undefined") return;
   if (globalThis.__HANBI_CHZZK_TOOLS__) return;
   globalThis.__HANBI_CHZZK_TOOLS__ = true;
@@ -475,7 +481,13 @@
 
     const mimeType = chooseRecorderMime(MediaRecorder);
     let recorder;
-    try { recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined); }
+    try {
+      recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: recordingVideoBitrate(source),
+        audioBitsPerSecond: 192_000,
+      });
+    }
     catch (error) { if (!shared) stream.getTracks().forEach(track => track.stop()); throw error; }
     const session = {
       recorder, stream, source, channelPath: location.pathname, button: buttonElement, chunks: [], startedAt: Date.now(),

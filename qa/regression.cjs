@@ -325,17 +325,20 @@ async function audioMain() {
     assert.equal(p.contexts[0].closes, 1);
   });
   await check('AUDIO-REC-START-FAIL: failed recorder start cleans one-shot tracks but keeps shared audio alive', () => {
-    let stopped = 0;
+    let stopped = 0, options;
     const stream = { getVideoTracks: () => [{}], getTracks: () => [{ stop() { stopped++; } }] };
     const ctx = vm.createContext({
-      location: { pathname: '/live/test' }, clearInterval() {}, recording: null, video: () => ({ captureStream: () => stream }), chooseRecorderMime: () => '',
-      MediaRecorder: class { addEventListener() {} start() { throw new Error('start unavailable'); } },
+      location: { pathname: '/live/test' }, clearInterval() {}, recording: null, video: () => ({ videoWidth: 1920, videoHeight: 1080, captureStream: () => stream }), chooseRecorderMime: () => '',
+      recordingVideoBitrate: require(path.join(repo, 'tools.js')).recordingVideoBitrate,
+      MediaRecorder: class { constructor(_stream, value) { options = value; } addEventListener() {} start() { throw new Error('start unavailable'); } },
       acquireCapture: () => ({ stream, shared: false }),
     });
     vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'toggleRecording'), ctx);
     vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'resetRecording'), ctx);
     try { ctx.toggleRecording({ classList: { remove() {} } }); } catch (error) { assert.equal(error.message, 'start unavailable'); }
     assert.deepEqual({ stopped, retained: !!ctx.recording }, { stopped: 1, retained: false });
+    assert.equal(options.videoBitsPerSecond, 12_000_000);
+    assert.equal(options.audioBitsPerSecond, 192_000);
     ctx.acquireCapture = () => ({ stream, shared: true });
     try { ctx.toggleRecording({ classList: { remove() {} } }); } catch (error) { assert.equal(error.message, 'start unavailable'); }
     assert.deepEqual({ stopped, retained: !!ctx.recording }, { stopped: 1, retained: false });

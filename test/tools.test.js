@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { chooseRecorderMime, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight } = require("../tools.js");
+const { chooseRecorderMime, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight } = require("../tools.js");
 
 test("화질 표시는 선택 메뉴가 아닌 실제 디코딩된 영상 높이를 쓴다", () => {
   assert.equal(actualQualityHeight({ readyState: 4, videoHeight: 1080, error: null }), 1080);
@@ -15,6 +15,14 @@ test("MediaRecorder는 Firefox가 지원하는 첫 WebM 형식을 고른다", ()
     "video/webm;codecs=vp8,opus",
   );
   assert.equal(chooseRecorderMime({}), "");
+});
+
+test("녹화 비트레이트는 영상 해상도에 맞추고 범위를 제한한다", () => {
+  assert.equal(recordingVideoBitrate({ videoWidth: 1920, videoHeight: 1080 }), 12_000_000);
+  assert.equal(recordingVideoBitrate({ videoWidth: 1280, videoHeight: 720 }), 5_333_333);
+  assert.equal(recordingVideoBitrate({ videoWidth: 854, videoHeight: 480 }), 3_000_000);
+  assert.equal(recordingVideoBitrate({ videoWidth: 3840, videoHeight: 2160 }), 16_000_000);
+  assert.equal(recordingVideoBitrate({ videoWidth: 0, videoHeight: 0 }), 12_000_000);
 });
 
 test("광고 차단 경고만 감지한다", () => {
