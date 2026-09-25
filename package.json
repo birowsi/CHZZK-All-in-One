@@ -1,11 +1,13 @@
 {
   "name": "chzzk-all-in-one",
-  "version": "1.0.2",
+  "version": "1.1.10",
   "private": true,
   "author": "hanbi",
   "license": "GPL-3.0-or-later",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:audit": "node qa/regression.cjs && node qa/regression.cjs --audio && node qa/regression.cjs --ui",
+    "test:all": "npm test && npm run test:audit"
   },
   "webExt": {
     "ignoreFiles": [

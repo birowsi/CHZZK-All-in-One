@@ -6,6 +6,10 @@ let followPowerCheckTimer = null;
 let popupCreateRetryTimer = null; // 배지 클릭 시 팝업 생성 재시도 타이머
 let popupLayerEscHandler = null; // 팝업 ESC 핸들러 참조 저장
 let badgeToggle = false;
+let powerAcquisitionEnabled = false;
+const pendingClaims = new Set();
+let powerClickBusy = false;
+let lastViewChannelId = null;
 let clockToggle = false;
 let movingGifProfileToggle = false; // 움직이는 gif 프로필 토글
 let lastViewLogTimestampMs = null; // 최근 view 로그 기록 시각 (메모리)
@@ -222,8 +226,8 @@ async function getChannelInfo(channelId) {
 
         if (data && data.content) {
             return {
-                channelId: data.content.channelId,
-                channelName: data.content.channelName,
+                channelId: data.content.channelId || channelId,
+                channelName: data.content.channelName || "알 수 없는 채널",
                 channelImageUrl: data.content.channelImageUrl,
                 verifiedMark: data.content.verifiedMark,
             };
@@ -277,33 +281,17 @@ async function savePowerLog(channelId, amount, method, testAmount = null, extra 
                 testAmount;
         }
 
-        // 기존 로그 가져오기
-        const result = await chrome.storage.local.get(["powerLogs"]);
-        const logs = result.powerLogs || [];
-
-        // 최대 저장 개수 설정 로드 (기본 10000)
-        let maxLogs = 10000;
-        try {
-            const s = await chrome.storage.sync.get(["maxLogs"]);
-            if (s && typeof s.maxLogs === 'number' && s.maxLogs > 0) maxLogs = Math.floor(s.maxLogs);
-        } catch (_) {}
-
-        // 새 로그 추가 (최대 maxLogs 개까지만 저장)
-        logs.unshift(logEntry);
-        if (logs.length > maxLogs) {
-            logs.splice(maxLogs);
-        }
-
-        // 저장
-        await chrome.storage.local.set({ powerLogs: logs });
+        await HanbiLogs.append(logEntry);
         console.log("[치지직 통나무 파워 자동 획득] 로그 저장됨:", logEntry);
+        return true;
     } catch (error) {
         console.error("[치지직 통나무 파워 자동 획득] 로그 저장 실패:", error);
+        return false;
     }
 }
 
 chrome.storage.sync.get(
-    ["badge", "clockToggle", "movingGifProfile", "powerSummary"],
+    ["badge", "clockToggle", "movingGifProfile", "powerSummary", "powerAcquisition"],
     (r) => {
     if (r.badge == undefined) {
         r.badge = true;
@@ -321,6 +309,8 @@ chrome.storage.sync.get(
             r.powerSummary = false;
             chrome.storage.sync.set({ powerSummary: false });
         }
+    powerAcquisitionEnabled = r.powerAcquisition ?? r.badge;
+    if (r.powerAcquisition === undefined) chrome.storage.sync.set({ powerAcquisition: powerAcquisitionEnabled });
     badgeToggle = r.badge;
     clockToggle = r.clockToggle;
     movingGifProfileToggle = !!r.movingGifProfile;
@@ -380,61 +370,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-(function alwaysActive() {
-    // document 속성 오버라이드
-    try {
-        Object.defineProperty(document, "hidden", {
-            get: () => false,
-            configurable: true,
-        });
-    } catch (e) {}
-    try {
-        Object.defineProperty(document, "visibilityState", {
-            get: () => "visible",
-            configurable: true,
-        });
-    } catch (e) {}
-    try {
-        Object.defineProperty(document, "webkitVisibilityState", {
-            get: () => "visible",
-            configurable: true,
-        });
-    } catch (e) {}
-    try {
-        document.hasFocus = () => true;
-    } catch (e) {}
-    // 이벤트 리스너 무시
-    const blockedEvents = [
-        "visibilitychange",
-        "blur",
-        "webkitvisibilitychange",
-    ];
-    const origAddEventListener = EventTarget.prototype.addEventListener;
-    EventTarget.prototype.addEventListener = function (
-        type,
-        listener,
-        options
-    ) {
-        if (blockedEvents.includes(type)) return;
-        return origAddEventListener.call(this, type, listener, options);
-    };
-    // 즉시 한 번 visibilitychange 이벤트 발생시켜서 반영
-    try {
-        document.dispatchEvent(new Event("visibilitychange"));
-    } catch (e) {}
-})();
+// Native visibility/focus events are preserved for other features.
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync') return;
+    if (changes.powerAcquisition) powerAcquisitionEnabled = changes.powerAcquisition.newValue !== false;
+    if (changes.badge) badgeToggle = changes.badge.newValue !== false;
+    if (changes.clockToggle) clockToggle = !!changes.clockToggle.newValue;
+    if (changes.powerSummary) powerSummaryToggle = !!changes.powerSummary.newValue;
+    if (changes.movingGifProfile) movingGifProfileToggle = !!changes.movingGifProfile.newValue;
+});
 
 // PerformanceObserver 기반 네트워크 감지
 (function observeNetworkByPerformance() {
     const followRe = /\/service\/v1\/channels\/[\w-]+\/follow(?:[\/?#].*)?$/; // 쿼리/슬래시 허용
     function handleUrl(url) {
-        if (!url) return;
+        if (!url || !powerAcquisitionEnabled) return;
         if (!followRe.test(url)) return;
         console.log("[치지직 통나무 파워 자동 획득] 감지: follow", url);
         if (!followPowerCheckTimer) {
             let tryCount = 0;
             followPowerCheckTimer = setInterval(async () => {
-                tryCount++;
+                if (!powerAcquisitionEnabled || ++tryCount > 12) { clearInterval(followPowerCheckTimer); followPowerCheckTimer = null; return; }
                 const channelId = getChannelIdFromUrl();
                 if (!channelId) return;
                 let amount = null;
@@ -457,28 +413,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         "[치지직 통나무 파워 자동 획득] claims:",
                         claims
                     );
-                    await Promise.all(
-                        claims.map(async (claim) => {
-                            if (claim.claimType === "WATCH_1_HOUR") return; // WATCH_1_HOUR는 백그라운드 API 호출로 획득하지 않고 화면 버튼 클릭으로만 획득
-                            const claimId = claim.claimId;
-                            const putUrl = `https://api.chzzk.naver.com/service/v1/channels/${channelId}/log-power/claims/${claimId}`;
-                            try {
-                                await fetch(putUrl, {
-                                    method: "PUT",
-                                    credentials: "include",
-                                });
-                            } catch (e) {}
-                            // 로그 저장
-                            if (claim.claimType != "WATCH_1_HOUR") {
-                                // 로그 저장
-                                savePowerLog(
-                                    channelId,
-                                    claim.amount,
-                                    claim.claimType
-                                );
-                            }
-                        })
-                    );
+                    await Promise.all(claims.map(claim => claimPower(channelId, claim)));
                     for (let i = 0; i < 10; i++) {
                         try {
                             const res2 = await fetch(
@@ -544,12 +479,13 @@ async function fetchAndUpdatePowerAmount() {
     let amount = null;
     let claims = [];
     let now = new Date();
-    let active = true;
+    let active = null;
     try {
         const res = await fetch(
             `https://api.chzzk.naver.com/service/v1/channels/${channelId}/log-power`,
             { credentials: "include" }
         );
+        if (!res.ok) return;
         const data = await res.json();
         if (data && data.content) {
             if (typeof data.content.amount === "number") {
@@ -562,52 +498,13 @@ async function fetchAndUpdatePowerAmount() {
                 active = data.content.active;
             }
         }
-    } catch (e) {
-        amount = null;
-        claims = [];
-        active = true;
-    }
+    } catch (e) { return; }
+    if (channelId !== getChannelIdFromUrl()) return;
     if (active === false) {
         isChannelInactive = true; // 비활성화 상태 고정
         if (claims.length > 0) {
             console.log("[치지직 통나무 파워 자동 획득] claims:", claims);
-            await Promise.all(
-                claims.map(async (claim) => {
-                    if (claim.claimType === "WATCH_1_HOUR") return; // WATCH_1_HOUR는 백그라운드 API 호출로 획득하지 않고 화면 버튼 클릭으로만 획득
-                    const claimId = claim.claimId;
-                    const claimType = claim.claimType;
-                    const putUrl = `https://api.chzzk.naver.com/service/v1/channels/${channelId}/log-power/claims/${claimId}`;
-                    try {
-                        const putRes = await fetch(putUrl, {
-                            method: "PUT",
-                            credentials: "include",
-                        });
-                        const putJson = await putRes.json();
-                        const amountText =
-                            putJson.content &&
-                            typeof putJson.content.amount === "number"
-                                ? putJson.content.amount
-                                : "?";
-                        console.log(
-                            `[치지직 통나무 파워 자동 획득] ${claimType}으로 ${amountText}개 획득`
-                        );
-                        if (claimType == "WATCH_1_HOUR") {
-                            // 로그 저장
-                            savePowerLog(channelId, 100, claimType);
-                        }
-                        else if (claimType == "FOLLOW") {
-                            savePowerLog(channelId, 300, "FOLLOW");
-                        } else {
-                            savePowerLog(channelId, 0, claimType, amountText);
-                        }
-                    } catch (e) {
-                        console.log(
-                            "[치지직 통나무 파워 자동 획득] PUT 요청 에러:",
-                            e
-                        );
-                    }
-                })
-            );
+            await Promise.all(claims.map(claim => claimPower(channelId, claim)));
             setTimeout(() => {
                 fetchAndUpdatePowerAmount();
             }, 1000);
@@ -618,56 +515,29 @@ async function fetchAndUpdatePowerAmount() {
         // 4초간 badge 표시 반복 갱신
         let inactiveBadgeTries = 0;
         const inactiveBadgeTimer = setInterval(() => {
+            if (channelId !== getChannelIdFromUrl()) { clearInterval(inactiveBadgeTimer); return; }
             updatePowerCountBadge(amount, true);
             inactiveBadgeTries++;
             if (inactiveBadgeTries > 4) {
                 clearInterval(inactiveBadgeTimer);
             }
         }, 1000);
-        if (typeof powerBadgeDomPoller !== "undefined" && powerBadgeDomPoller)
+        if (channelId !== getChannelIdFromUrl()) return;
+        if (powerBadgeDomPoller) {
             clearInterval(powerBadgeDomPoller);
-        if (typeof powerCountInterval !== "undefined" && powerCountInterval)
-            clearInterval(powerCountInterval);
+            powerBadgeDomPoller = null;
+        }
         return;
     }
+    if (isChannelInactive && active !== true) return;
+    const wasInactive = isChannelInactive;
     isChannelInactive = false; // 활성화 상태로 복귀 시 해제
+    if (wasInactive && !powerBadgeDomPoller) startPowerBadgeDomPoller();
     cachedPowerAmount = amount;
     updatePowerCountBadge(amount, false);
     if (claims.length > 0) {
         console.log("[치지직 통나무 파워 자동 획득] claims:", claims);
-        await Promise.all(
-            claims.map(async (claim) => {
-                if (claim.claimType === "WATCH_1_HOUR") return; // WATCH_1_HOUR는 백그라운드 API 호출로 획득하지 않고 화면 버튼 클릭으로만 획득
-                const claimId = claim.claimId;
-                const claimType = claim.claimType;
-                const putUrl = `https://api.chzzk.naver.com/service/v1/channels/${channelId}/log-power/claims/${claimId}`;
-                try {
-                    const putRes = await fetch(putUrl, {
-                        method: "PUT",
-                        credentials: "include",
-                    });
-                    const putJson = await putRes.json();
-                    const amountText =
-                        putJson.content &&
-                        typeof putJson.content.amount === "number"
-                            ? putJson.content.amount
-                            : "?";
-                    console.log(
-                        `[치지직 통나무 파워 자동 획득] ${claimType}으로 ${amountText}개 획득`
-                    );
-
-                    if (claimType != "WATCH_1_HOUR") {
-                        // 로그 저장
-                        savePowerLog(channelId, 0, claimType, amountText);
-                    }
-                } catch (e) {
-                    console.log(
-                        "[치지직 통나무 파워 자동 획득] PUT 요청 에러:",
-                        e
-                    );
-                }
-            })
-        );
+        await Promise.all(claims.map(claim => claimPower(channelId, claim)));
         // claims 획득 후 파워 표시 즉시 갱신
         setTimeout(() => {
             fetchAndUpdatePowerAmount();
@@ -1120,30 +990,9 @@ function calculateNextPowerTimeForClock() {
 
 // 마지막 로그 기준으로 다음 획득 시간 계산 (content script용)
 function calculateFromLastLogForClock(logs, now) {
-    // view 타입 로그만 필터링
-    const viewLogs = logs.filter(log => log.method === 'view');
-    
-    if (viewLogs.length === 0) {
-        // view 타입 로그가 없으면 현재 시간부터 1시간 후
-        return new Date(now.getTime() + 60 * 60 * 1000);
-    }
-    
-    // 가장 최근 view 타입 로그 찾기
-    const lastLog = viewLogs[0];
-    const lastLogTime = new Date(lastLog.timestamp);
-    
-    // 현재 시간의 분을 마지막 로그의 분으로 설정
-    const nextTime = new Date(now);
-    nextTime.setMinutes(lastLogTime.getMinutes());
-    nextTime.setSeconds(0);
-    nextTime.setMilliseconds(0);
-    
-    // 현재 시간보다 이전이면 다음 시간으로 설정
-    if (nextTime <= now) {
-        nextTime.setHours(nextTime.getHours() + 1);
-    }
-    
-    return nextTime;
+    const latest = logs.filter(log => log?.method === 'view').reduce((max, log) => Math.max(max, Date.parse(log.timestamp) || 0), 0);
+    const next = latest ? new Date(latest + 3_600_000) : null;
+    return next && next > now ? next : null;
 }
 
 // 시계 표시 업데이트
@@ -1153,11 +1002,11 @@ async function updateClockDisplay() {
     try {
         const nextPowerTime = await calculateNextPowerTimeForClock();
         const now = new Date();
-        const diffMs = nextPowerTime.getTime() - now.getTime();
+        const diffMs = nextPowerTime ? nextPowerTime.getTime() - now.getTime() : 0;
         
         let timeText;
         if (diffMs <= 0) {
-            timeText = '곧';
+            timeText = '확인 필요';
         } else {
             const diffMinutes = Math.floor(diffMs / (1000 * 60));
             const hours = Math.floor(diffMinutes / 60);
@@ -1255,11 +1104,13 @@ async function getViewPowerAmountBySubscription(channelId) {
 }
 
 async function clickPowerButtonIfExists() {
+    if (!powerAcquisitionEnabled || powerClickBusy) return;
     const aside = document.querySelector("aside#aside-chatting");
     if (!aside) return;
     const channelId = getChannelIdFromUrl();
     if (!channelId) return;
     const btn = Array.from(aside.querySelectorAll("button")).find((b) => {
+        if (b.disabled || b.getAttribute?.('aria-disabled') === 'true') return false;
         const text = b.textContent || "";
         return Array.from(b.classList).some((cls) =>
             cls.startsWith("live_chatting_power_button__") ||
@@ -1279,6 +1130,8 @@ async function clickPowerButtonIfExists() {
         );
     });
     if (btn) {
+        powerClickBusy = true;
+        try {
         btn.click();
         console.log(
             "[치지직 통나무 파워 자동 획득] 자동 클릭: live_chatting_power_button"
@@ -1291,35 +1144,34 @@ async function clickPowerButtonIfExists() {
             const hasRecentViewInStorage = logs.some(
                 (log) =>
                     log &&
-                    log.method === "view" &&
+                    log.method === "view" && log.channelId === channelId &&
                     log.timestamp &&
                     new Date(log.timestamp).getTime() >= now - 60 * 1000
             );
             const hasRecentViewInMemory =
-                typeof lastViewLogTimestampMs === "number" &&
+                lastViewChannelId === channelId && typeof lastViewLogTimestampMs === "number" &&
                 lastViewLogTimestampMs >= now - 60 * 1000;
             if (!(hasRecentViewInStorage || hasRecentViewInMemory)) {
                 const amountToLog = await getViewPowerAmountBySubscription(channelId);
-                await savePowerLog(channelId, amountToLog, "view");
-                lastViewLogTimestampMs = now;
-                // 팝업에 파워 획득 알림
-                chrome.runtime.sendMessage({ action: 'powerAcquired' });
+                if (await savePowerLog(channelId, amountToLog, "view")) {
+                    lastViewLogTimestampMs = now; lastViewChannelId = channelId;
+                }
             }
         } catch (e) {
             // 스토리지 조회 실패 시에는 기존 동작 유지
             const now = Date.now();
             const hasRecentViewInMemory =
-                typeof lastViewLogTimestampMs === "number" &&
+                lastViewChannelId === channelId && typeof lastViewLogTimestampMs === "number" &&
                 lastViewLogTimestampMs >= now - 60 * 1000;
             if (!hasRecentViewInMemory) {
                 const amountToLog = await getViewPowerAmountBySubscription(channelId);
-                await savePowerLog(channelId, amountToLog, "view");
-                lastViewLogTimestampMs = now;
-                // 팝업에 파워 획득 알림
-                chrome.runtime.sendMessage({ action: 'powerAcquired' });
+                if (await savePowerLog(channelId, amountToLog, "view")) {
+                    lastViewLogTimestampMs = now; lastViewChannelId = channelId;
+                }
             }
         }
         fetchAndUpdatePowerAmount();
+        } finally { powerClickBusy = false; }
     }
 }
 
@@ -1395,12 +1247,13 @@ async function fetchParticipationAndRecord(channelId, predictionId) {
         if (prev) {
             // 기존 음수 로그 제거
             try {
-                const store = await chrome.storage.local.get(['powerLogs']);
+                const store = await HanbiLogs.read();
+                const baseLogs = structuredClone(store.powerLogs);
                 const logs = store.powerLogs || [];
                 const idx = logs.findIndex(l => l.channelId === channelId && String(l.method || '').toLowerCase() === 'prediction' && Number(l.amount) === -Math.abs(prev.bettingPowers));
                 if (idx !== -1) {
                     logs.splice(idx, 1);
-                    await chrome.storage.local.set({ powerLogs: logs });
+                    await HanbiLogs.commit(baseLogs, logs);
                 }
             } catch (_) {}
         }
@@ -1495,19 +1348,20 @@ async function pollPredictionStatuses() {
                                         const net = Math.max(0, Math.abs(payout) - Math.abs(participationBet));
                                         // 새로운 로그 추가 대신 기존 prediction 로그 수정 (순이익 기준)
                                     try {
-                                        const store = await chrome.storage.local.get(['powerLogs']);
+                                        const store = await HanbiLogs.read();
+                                        const baseLogs = structuredClone(store.powerLogs);
                                         const logs = store.powerLogs || [];
                                         let updated = false;
                                         for (let i = 0; i < logs.length; i++) {
                                             const l = logs[i];
-                                            if (l && String(l.method||'').toLowerCase()==='prediction' && l.predictionId === bet.predictionId) {
+                                            if (l && l.channelId === channelId && String(l.method||'').toLowerCase()==='prediction' && l.predictionId === bet.predictionId) {
                                                     logs[i] = { ...l, amount: net };
                                                 updated = true;
                                                 break;
                                             }
                                         }
                                         if (updated) {
-                                            await chrome.storage.local.set({ powerLogs: logs });
+                                            await HanbiLogs.commit(baseLogs, logs);
                                         }
                                     } catch (_) {}
                                 }
@@ -1517,12 +1371,13 @@ async function pollPredictionStatuses() {
                             fetchAndUpdatePowerAmount();
                             // 취소 시 음수 로그 삭제
                             try {
-                                const store = await chrome.storage.local.get(['powerLogs']);
+                                const store = await HanbiLogs.read();
+                                const baseLogs = structuredClone(store.powerLogs);
                                 const logs = store.powerLogs || [];
-                                const idx = logs.findIndex(l => l.channelId === channelId && String(l.method || '').toLowerCase() === 'prediction' && Number(l.amount) === -Math.abs(bet.bettingPowers));
+                                const idx = logs.findIndex(l => l.channelId === channelId && l.predictionId === bet.predictionId && String(l.method || '').toLowerCase() === 'prediction' && Number(l.amount) === -Math.abs(bet.bettingPowers));
                                 if (idx !== -1) {
                                     logs.splice(idx, 1);
-                                    await chrome.storage.local.set({ powerLogs: logs });
+                                    await HanbiLogs.commit(baseLogs, logs);
                                 }
                             } catch (_) {}
                         }
@@ -1551,7 +1406,8 @@ function startPredictionLogDetailPoller() {
 
 async function syncFinalizedPredictionLogDetails() {
     try {
-        const store = await chrome.storage.local.get(['powerLogs']);
+        const store = await HanbiLogs.read();
+        const baseLogs = structuredClone(store.powerLogs);
         const logs = store.powerLogs || [];
         const targets = logs.filter(l => String(l.method||'').toLowerCase()==='prediction' && l.predictionId && (!l.predictionStatus || String(l.predictionStatus).toUpperCase()==='PENDING'));
         if (targets.length === 0) return;
@@ -1580,7 +1436,7 @@ async function syncFinalizedPredictionLogDetails() {
                     }
                     // 해당 predictionId의 모든 로그 업데이트
                     for (const l of logs) {
-                        if (l.predictionId === predictionId && String(l.method||'').toLowerCase()==='prediction') {
+                        if (l.channelId === channelId && l.predictionId === predictionId && String(l.method||'').toLowerCase()==='prediction') {
                             l.predictionStatus = status;
                             if (selectedOptionNo != null) l.participationSelectedOptionNo = selectedOptionNo;
                             if (typeof bettingPowers === 'number') l.participationBettingPowers = bettingPowers;
@@ -1597,7 +1453,7 @@ async function syncFinalizedPredictionLogDetails() {
                 }
             } catch (_) { }
         }
-        await chrome.storage.local.set({ powerLogs: logs });
+        await HanbiLogs.commit(baseLogs, logs);
     } catch (_) {}
 }
 
@@ -1611,3 +1467,19 @@ setInterval(() => {
         updateClockDisplay();
     }
 }, 1000);
+
+async function claimPower(channelId, claim) {
+    const key = channelId + ':' + claim.claimId;
+    if (!powerAcquisitionEnabled || claim.claimType === 'WATCH_1_HOUR' || pendingClaims.has(key)) return;
+    pendingClaims.add(key);
+    try {
+        if (!powerAcquisitionEnabled) return;
+        const response = await fetch('https://api.chzzk.naver.com/service/v1/channels/' + channelId + '/log-power/claims/' + claim.claimId, { method: 'PUT', credentials: 'include' });
+        if (!response.ok) throw new Error('통나무 획득 HTTP ' + response.status);
+        const data = await response.json();
+        if (data.code !== 200) throw new Error('통나무 획득 응답 오류');
+        const amount = Number.isFinite(claim.amount) ? claim.amount : data.content?.amount;
+        if (Number.isFinite(amount)) await savePowerLog(channelId, amount, claim.claimType, null, { eventKey: key });
+    } catch (error) { console.warn('[CHZZK power]', error.message); }
+    finally { pendingClaims.delete(key); }
+}

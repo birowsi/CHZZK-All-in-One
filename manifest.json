@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CHZZK All-in-One by hanbi",
   "short_name": "CHZZK AIO",
-  "version": "1.0.2",
+  "version": "1.1.10",
   "description": "hanbi의 CHZZK 통합 도구: GRID/P2P·광고 우회, 최고 화질, 팔로잉 방송 알림, 녹화·변환·스크린샷, 통나무 자동 획득, 선명도 조절.",
   "author": "hanbi",
   "browser_specific_settings": {
@@ -17,13 +17,18 @@
   "content_scripts": [
     {
       "matches": ["https://chzzk.naver.com/*", "https://*.chzzk.naver.com/*"],
-      "js": ["page.js"],
+      "js": ["playback-settings.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://chzzk.naver.com/*", "https://*.chzzk.naver.com/*"],
+      "js": ["page.js", "timeshift.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
       "matches": ["https://chzzk.naver.com/*", "https://m.chzzk.naver.com/*"],
-      "js": ["content.js", "following-logic.js", "tools.js"],
+      "js": ["log-store.js", "content.js", "following-logic.js", "tools.js"],
       "css": ["tools.css"],
       "run_at": "document_end"
     }
@@ -50,6 +55,8 @@
     "downloads",
     "activeTab",
     "tabs",
+    "webRequest",
+    "webRequestBlocking",
     "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
@@ -63,13 +70,13 @@
     "rule_resources": [
       {
         "id": "grid_bypass",
-        "enabled": true,
+        "enabled": false,
         "path": "rules.json"
       }
     ]
   },
   "background": {
-    "scripts": ["following-logic.js", "background.js"]
+    "scripts": ["following-logic.js", "grid-bypass.js", "log-store.js", "recording-store.js", "background.js"]
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; object-src 'self'"
@@ -78,6 +85,10 @@
     {
       "resources": ["log.html"],
       "matches": ["<all_urls>"]
+    },
+    {
+      "resources": ["vendor/hls.light.min.mjs"],
+      "matches": ["https://chzzk.naver.com/*", "https://*.chzzk.naver.com/*"]
     }
   ]
 }

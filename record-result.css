@@ -20,11 +20,11 @@ button:active:not(:disabled) { background: #080808; }
 button:disabled { cursor: not-allowed; opacity: .4; }
 button strong, button small { display: block; }
 button small { margin-top: 2px; color: #999; }
-.tools form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 9px; align-items: end; margin-top: 9px; }
-.tools form + form { grid-template-columns: 1fr auto; padding-top: 13px; border-top: 1px solid #333; }
+.tools form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 9px; align-items: end; margin-top: 9px; }
+.tools form + form { grid-template-columns: 1fr 1fr auto; padding-top: 13px; border-top: 1px solid #333; }
 label { color: #aaa; font-size: 12px; }
-input { width: 100%; margin-top: 5px; padding: 9px; border: 1px solid #444; border-radius: 3px; color: #fff; background: #080808; }
-input:focus { outline: 1px solid #ddd; border-color: #ddd; }
+input, select { width: 100%; margin-top: 5px; padding: 9px; border: 1px solid #444; border-radius: 3px; color: #fff; background: #080808; }
+input:focus, select:focus { outline: 1px solid #ddd; border-color: #ddd; }
 #status { min-height: 21px; margin: 15px 2px 6px; color: #bbb; }
 #status.is-error { color: #fff; text-decoration: underline; }
 #progress-wrap { display: flex; align-items: center; gap: 10px; }

@@ -11,6 +11,8 @@ let recording;
 let recordingUrl;
 let ffmpeg;
 let ffmpegLoading;
+let percentKnown;
+const recordingId = new URL(location.href).searchParams.get('id');
 
 function setStatus(message, error = false) {
   status.textContent = message;
@@ -41,9 +43,12 @@ async function loadFFmpeg() {
   if (ffmpegLoading) return ffmpegLoading;
   ffmpeg = new FFmpeg();
   ffmpeg.on("progress", ({ progress: value }) => {
-    const percent = Math.max(0, Math.min(100, Math.round(value * 100)));
-    progress.value = percent;
-    progressText.textContent = `${percent}%`;
+    if (value > 0 && value <= 1) {
+      percentKnown = true;
+      const percent = Math.round(value * 100);
+      progress.value = percent;
+      progressText.textContent = `${percent}%`;
+    } else if (!percentKnown) progress.removeAttribute("value");
   });
   ffmpegLoading = ffmpeg.load({
     coreURL: api.runtime.getURL("vendor/ffmpeg/core/ffmpeg-core.js"),
@@ -64,17 +69,37 @@ async function cleanWorkspace(engine) {
 }
 
 async function convert(kind, options) {
-  const spec = conversionSpec(kind, options);
   setBusy(true);
-  progress.value = 0;
+  percentKnown = false;
+  progress.removeAttribute("value");
   progressText.textContent = "준비 중…";
   setStatus("변환기를 불러오는 중…");
+  let ticker = null;
   try {
+    const spec = conversionSpec(kind, options);
     const engine = await loadFFmpeg();
     await cleanWorkspace(engine);
-    setStatus("브라우저에서 변환 중입니다. 이 탭을 닫지 마세요.");
+    setStatus("브라우저에서 변환 중입니다. 이 탭을 닫지 마세요. 긴 영상은 수 분 이상 걸릴 수 있습니다.");
     await engine.writeFile("input.webm", new Uint8Array(await recording.blob.arrayBuffer()));
-    const exitCode = await engine.exec(["-i", "input.webm", ...spec.args, spec.output]);
+    const startedAt = Date.now();
+    ticker = setInterval(() => {
+      if (!percentKnown) progressText.textContent = `인코딩 중 · ${Math.round((Date.now() - startedAt) / 1000)}초 경과`;
+    }, 1000);
+    const command = current => [...(current.preInput || []), "-i", "input.webm", ...current.args, current.output];
+    if (spec.split === "chunks") {
+      if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("영상 길이를 확인할 수 없어 분할하지 못했습니다.");
+      for (let index = 0, start = 0; start < video.duration; index++, start += spec.seconds) {
+        const part = conversionSpec("trim", { start, end: Math.min(video.duration, start + spec.seconds), format: spec.format });
+        if (await engine.exec(command(part)) !== 0) throw new Error(`${index + 1}번째 분할 변환에 실패했습니다.`);
+        const data = await engine.readFile(part.output);
+        await downloadBlob(new Blob([data], { type: part.mime }), `${safeName(recording.fileName)}_${String(index + 1).padStart(3, "0")}.${part.ext}`);
+        await engine.deleteFile(part.output);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      setStatus("변환과 다운로드를 완료했습니다. 다운로드 폴더에서 분할 파일을 확인하세요.");
+      return;
+    }
+    const exitCode = await engine.exec(command(spec));
     if (exitCode !== 0) throw new Error("변환기가 작업을 완료하지 못했습니다.");
 
     if (spec.split) {
@@ -87,15 +112,18 @@ async function convert(kind, options) {
         await downloadBlob(new Blob([data], { type: spec.mime }), `${safeName(recording.fileName)}_${String(index + 1).padStart(3, "0")}.${spec.ext}`);
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
+      setStatus("변환과 다운로드를 완료했습니다. 다운로드 폴더에서 분할 파일을 확인하세요.");
     } else {
       const data = await engine.readFile(spec.output);
-      await downloadBlob(new Blob([data], { type: spec.mime }), `${safeName(recording.fileName)}${spec.suffix || ""}.${spec.ext}`);
+      const fileName = `${safeName(recording.fileName)}${spec.suffix || ""}.${spec.ext}`;
+      await downloadBlob(new Blob([data], { type: spec.mime }), fileName);
+      setStatus(`변환과 다운로드를 완료했습니다. 다운로드 폴더의 "${fileName}" 파일입니다.`);
     }
-    setStatus("변환과 다운로드를 완료했습니다.");
   } catch (error) {
     console.error("[CHZZK All-in-One recorder]", error);
-    setStatus(`${error?.message || "변환에 실패했습니다."} MP4 빠른 변환이 실패하면 호환 변환을 사용하세요.`, true);
+    setStatus(error?.message || "변환에 실패했습니다.", true);
   } finally {
+    if (ticker) clearInterval(ticker);
     setBusy(false);
   }
 }
@@ -109,11 +137,11 @@ document.querySelectorAll("[data-convert]").forEach((button) => {
 });
 document.getElementById("trim-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  convert("trim", { start: document.getElementById("trim-start").value, end: document.getElementById("trim-end").value });
+  convert("trim", { start: document.getElementById("trim-start").value, end: document.getElementById("trim-end").value, format: document.getElementById("trim-format").value });
 });
 document.getElementById("split-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  convert("split", { seconds: document.getElementById("split-seconds").value });
+  convert("split", { seconds: document.getElementById("split-seconds").value, format: document.getElementById("split-format").value });
 });
 
 video.addEventListener("loadedmetadata", () => {
@@ -124,7 +152,7 @@ video.addEventListener("loadedmetadata", () => {
 });
 
 try {
-  recording = await api.runtime.sendMessage({ type: "get-recording" });
+  recording = await api.runtime.sendMessage({ type: "get-recording", id: recordingId });
   if (!(recording?.blob instanceof Blob)) throw new Error("녹화 데이터를 받지 못했습니다. 방송 탭에서 다시 녹화해 주세요.");
   recordingUrl = URL.createObjectURL(recording.blob);
   video.src = recordingUrl;
@@ -139,3 +167,13 @@ window.addEventListener("pagehide", () => {
   if (recordingUrl) URL.revokeObjectURL(recordingUrl);
   ffmpeg?.terminate();
 }, { once: true });
+
+document.getElementById('delete-recording').addEventListener('click', async () => {
+  if (!confirm('브라우저에 보관된 이 녹화를 삭제할까요? 다운로드한 파일은 유지됩니다.')) return;
+  try {
+    await api.runtime.sendMessage({ type: 'delete-recording', id: recordingId });
+    video.pause(); video.removeAttribute('src'); video.load();
+    if (recordingUrl) URL.revokeObjectURL(recordingUrl);
+    recording = null; setBusy(false); setStatus('보관된 녹화를 삭제했습니다.');
+  } catch (error) { setStatus(error.message, true); }
+});

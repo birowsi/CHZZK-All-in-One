@@ -1,5 +1,23 @@
 let allLogs = [];
 let filteredLogs = [];
+let loadedLogs = [];
+
+function acceptLogs(result) {
+    allLogs = result.powerLogs;
+    loadedLogs = structuredClone(allLogs);
+}
+
+function refreshPowerLogs(changes, area) {
+    if (area !== 'local' || !changes.powerLogs || JSON.stringify(allLogs) !== JSON.stringify(loadedLogs)) return;
+    acceptLogs({ powerLogs: changes.powerLogs.newValue || [] });
+    applyFilters();
+    updateStats();
+}
+
+async function persistLogs() {
+    try { acceptLogs(await HanbiLogs.commit(loadedLogs, allLogs)); }
+    catch (error) { allLogs = structuredClone(loadedLogs); applyFilters(); throw error; }
+}
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -40,6 +58,7 @@ function sanitizeParsedHtml(parsed) {
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', function() {
     loadLogs();
+    chrome.storage.onChanged.addListener(refreshPowerLogs);
     setupFilters();
     setupThemeToggle();
     // 최대 저장치 UI 초기화
@@ -213,8 +232,7 @@ function showConfirm(message, { title = '확인', okText = '확인', cancelText 
 // 로그 데이터 로드
 async function loadLogs() {
     try {
-        const result = await chrome.storage.local.get(['powerLogs']);
-        allLogs = result.powerLogs || [];
+        acceptLogs(await HanbiLogs.read());
         filteredLogs = [...allLogs];
         
         updateStats();
@@ -499,21 +517,20 @@ function addEventListeners() {
                 // 저장소와 불일치 시 즉시 저장소의 예측 로그 금액을 (winningPowers - bettingPowers)로 덮어쓰기
                 if (wonPower != null && wonPower >= 1) {
                     try {
-                        const store = await chrome.storage.local.get(['powerLogs']);
+                        const store = await HanbiLogs.read();
+                        const baseLogs = structuredClone(store.powerLogs);
                         const logs = store.powerLogs || [];
                         let updated = false;
                         for (let i = 0; i < logs.length; i++) {
                             const l = logs[i];
                             const desired = Math.max(0, ((typeof wonPower==='number'?wonPower:0) - (typeof usedPower==='number'?usedPower:0)));
-                            if (l && String(l.method||'').toLowerCase()==='prediction' && l.predictionId === predictionId && typeof l.amount === 'number' && l.amount !== desired) {
+                            if (l && String(l.method||'').toLowerCase()==='prediction' && l.channelId === channelId && l.predictionId === predictionId && typeof l.amount === 'number' && l.amount !== desired) {
                                 logs[i] = { ...l, amount: desired };
                                 updated = true;
                             }
                         }
                         if (updated) {
-                            await chrome.storage.local.set({ powerLogs: logs });
-                            // 메모리 데이터도 최신화
-                            allLogs = logs.slice();
+                            acceptLogs(await HanbiLogs.commit(baseLogs, logs));
                             applyFilters();
                             updateStats();
                             renderLogs();
@@ -661,15 +678,11 @@ async function deleteLog(filteredIndex) {
     if (ok) {
         try {
             // 전체 로그에서 해당 로그 찾아서 삭제
-            const allIndex = allLogs.findIndex(l => 
-                l.timestamp === log.timestamp && 
-                l.channelId === log.channelId && 
-                l.amount === log.amount
-            );
+            const allIndex = allLogs.findIndex(l => l.id === log.id);
             
             if (allIndex !== -1) {
                 allLogs.splice(allIndex, 1);
-                await chrome.storage.local.set({ powerLogs: allLogs });
+                await persistLogs();
                 
                 // 필터링된 로그도 업데이트
                 applyFilters();
@@ -904,7 +917,7 @@ async function saveTestLog() {
         const localValue = document.getElementById('testTimestamp').value; // local time
         const isoTimestamp = new Date(localValue).toISOString();
 
-        if (!channelName || !channelId || !amount || !method) {
+        if (!channelName || !channelId || !Number.isFinite(amount) || !method) {
             showToast('필수 값을 입력하세요.', 'error');
             return;
         }
@@ -924,7 +937,7 @@ async function saveTestLog() {
 
         // 앞쪽에 추가
         allLogs.unshift(newLog);
-        await chrome.storage.local.set({ powerLogs: allLogs });
+        await persistLogs();
         applyFilters();
         updateStats();
         renderLogs();
@@ -946,17 +959,13 @@ async function saveLogEdit(filteredIndex) {
         const newTimestamp = new Date(document.getElementById('editTimestamp').value).toISOString();
         const newPredictionId = document.getElementById('editPredictionId') ? document.getElementById('editPredictionId').value.trim() : '';
         
-        if (!newChannelName || !newAmount || !newMethod) {
+        if (!newChannelName || !Number.isFinite(newAmount) || !newMethod) {
             showToast('모든 필드를 입력해주세요.', 'error');
             return;
         }
         
         // 전체 로그에서 해당 로그 찾아서 수정
-        const allIndex = allLogs.findIndex(l => 
-            l.timestamp === log.timestamp && 
-            l.channelId === log.channelId && 
-            l.amount === log.amount
-        );
+        const allIndex = allLogs.findIndex(l => l.id === log.id);
         
         if (allIndex !== -1) {
             allLogs[allIndex] = {
@@ -968,7 +977,7 @@ async function saveLogEdit(filteredIndex) {
                 ...(String(newMethod).toUpperCase()==='PREDICTION' ? { predictionId: newPredictionId } : { predictionId: undefined })
             };
             
-            await chrome.storage.local.set({ powerLogs: allLogs });
+            await persistLogs();
             
             // 필터링된 로그도 업데이트
             applyFilters();
@@ -988,8 +997,7 @@ async function clearAllLogs() {
     const ok = await showConfirm('모든 로그를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', { title: '모든 로그 삭제', okText: '삭제', cancelText: '취소', destructive: true });
     if (ok) {
         try {
-            await chrome.storage.local.remove(['powerLogs']);
-            allLogs = [];
+            acceptLogs(await HanbiLogs.clear());
             filteredLogs = [];
             updateStats();
             renderLogs();
@@ -1056,14 +1064,16 @@ function handleImportFile(event) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             const importData = JSON.parse(e.target.result);
             
             // 데이터 유효성 검사
-            if (!importData.logs || !Array.isArray(importData.logs)) {
+            if (!importData || !Array.isArray(importData.logs)) {
                 throw new Error('잘못된 파일 형식입니다.');
             }
+
+            HanbiLogs.validate(importData.logs);
 
             // 기존 로그와 병합할지 확인
             if (allLogs.length > 0) {
@@ -1080,21 +1090,10 @@ function handleImportFile(event) {
                 }
             }
 
-            allLogs = importData.logs;
-
-            // 로그 정렬 (최신순)
-            allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-            // 저장소에 저장
-            chrome.storage.local.set({ powerLogs: allLogs }, () => {
-                if (chrome.runtime.lastError) {
-                    throw new Error(chrome.runtime.lastError.message);
-                }
-                
-                updateStats();
-                renderLogs();
-                showToast(`로그 ${importData.logs.length}개가 가져오기되었습니다.`, 'success');
-            });
+            acceptLogs(await HanbiLogs.replace(importData.logs));
+            applyFilters();
+            updateStats();
+            showToast(`로그 ${importData.logs.length}개가 가져오기되었습니다.`, 'success');
 
         } catch (error) {
             console.error('로그 가져오기 실패:', error);

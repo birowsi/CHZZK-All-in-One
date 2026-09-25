@@ -7,6 +7,10 @@ It is unofficial and is not affiliated with NAVER or CHZZK.
 Third-party code and binaries actually included
 ------------------------------------------------
 
+timeshift.js adapts cheese-knife's HLS buffer control and buffered seek logic (MIT):
+Copyright (c) 2023- jebibot
+https://github.com/jebibot/cheese-knife
+
 content.js is a modified GPL-3.0 work:
 Copyright (C) 2025 chocolily
 
@@ -22,6 +26,12 @@ https://github.com/ffmpegwasm/ffmpeg.wasm/tree/v0.12.15/packages/ffmpeg
 Copyright (c) ffmpeg.wasm contributors and FFmpeg contributors
 GPL-2.0-or-later; bundled WebAssembly core.
 https://github.com/ffmpegwasm/ffmpeg.wasm/tree/v0.12.10/packages/core
+
+hls.js 1.7.3
+Copyright (c) 2017 Dailymotion
+Apache License 2.0; bundled for the following live video hover preview.
+https://github.com/video-dev/hls.js/tree/v1.7.3
+Full license: vendor/hls.js.LICENSE
 
 MIT License text for the MIT-licensed components above
 --------------------------------------------------------

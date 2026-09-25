@@ -1,6 +1,8 @@
 #hanbi-player-tools { display: inline-flex; align-items: center; }
 .hanbi-tool-button { min-width: 42px; padding: 0 6px; color: #fff; font-size: 11px; font-weight: 700; }
 .hanbi-tool-button.is-recording { color: #00ffa3; }
+#hanbi-quality-button { min-width: 58px; color: #00ffa3; }
+.hanbi-quality-actual { display: inline-block; margin-left: 8px; padding: 1px 4px; border: 1px solid #00ffa3; border-radius: 2px; color: #00ffa3; font-size: 11px; white-space: nowrap; }
 #hanbi-audio-compressor { display: inline-flex; align-items: center; }
 #hanbi-audio-compressor input[type="range"] { width: 72px; margin: 0 5px; accent-color: #00ffa3; cursor: pointer; }
 #hanbi-audio-compressor input[hidden] { display: none !important; }
@@ -33,6 +35,20 @@
 #hanbi-screenshot-preview button[data-close] { min-width: 32px; font-size: 18px; }
 
 [data-hanbi-blind-masked="1"] { display: none !important; }
+[data-hanbi-hidden-promo] { display: none !important; }
+body.hanbi-promo-only { overflow: auto !important; padding-right: 0 !important; }
+#hanbi-time-machine { position: fixed; z-index: 2147483647; bottom: 70px; right: 20px; box-sizing: border-box; width: min(360px, calc(100vw - 40px)); padding: 14px; border: 1px solid #444; color: #fff; background: #111; font: 13px/1.5 system-ui, sans-serif; }
+#hanbi-time-machine header, #hanbi-time-machine footer { display: flex; align-items: center; gap: 8px; }
+#hanbi-time-machine header button { margin-left: auto; }
+#hanbi-time-machine p { margin: 10px 0; color: #ccc; }
+#hanbi-time-machine input { width: 100%; accent-color: #00ffa3; }
+#hanbi-time-machine button { padding: 4px 10px; border: 1px solid #444; color: #fff; background: #181818; cursor: pointer; }
+#hanbi-time-machine button[data-live] { margin-left: auto; color: #00ffa3; }
+#hanbi-time-machine button:disabled { opacity: .45; cursor: default; }
+#hanbi-time-machine :focus-visible { outline: 2px solid #00ffa3; outline-offset: 2px; }
+#hanbi-time-machine details { margin-top: 12px; color: #aaa; }
+#hanbi-time-machine summary { cursor: pointer; }
+#hanbi-time-machine textarea { box-sizing: border-box; width: 100%; height: 150px; margin-top: 6px; border: 1px solid #444; color: #eee; background: #181818; font: 11px/1.4 monospace; }
 .hanbi-restored-message { color: inherit !important; opacity: .75 !important; text-decoration: line-through; word-break: break-word; }
 #hanbi-video-filter-svg { position: fixed; width: 0; height: 0; pointer-events: none; }
 
@@ -49,7 +65,12 @@
 .hanbi-trend-link small { padding: 2px 4px; border-radius: 2px; color: #00ffa3; background: #050505; font-size: 10px; }
 #hanbi-trend-preview, #hanbi-sidebar-hover-preview { position: fixed; z-index: 2147483646; overflow: hidden; border: 1px solid #00ffa3; border-radius: 4px; color: #fff; background: #0d0d0d; box-shadow: 0 14px 36px #000d; pointer-events: none; }
 #hanbi-trend-preview[hidden], #hanbi-sidebar-hover-preview[hidden] { display: none; }
-#hanbi-trend-preview img, #hanbi-sidebar-hover-preview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
+#hanbi-trend-preview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
+#hanbi-sidebar-hover-preview .hanbi-sidebar-media { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+#hanbi-sidebar-hover-preview .hanbi-sidebar-media img, #hanbi-sidebar-hover-preview .hanbi-sidebar-media video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+#hanbi-sidebar-hover-preview .hanbi-sidebar-media video { opacity: 0; }
+#hanbi-sidebar-hover-preview.is-playing .hanbi-sidebar-media video { opacity: 1; }
+#hanbi-sidebar-hover-preview img[hidden] { display: none; }
 #hanbi-trend-preview div { display: grid; gap: 2px; padding: 9px 10px; }
 #hanbi-trend-preview strong { overflow: hidden; color: #fff; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 #hanbi-trend-preview span { color: #aaa; font-size: 11px; }

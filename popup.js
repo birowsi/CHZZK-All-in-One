@@ -18,7 +18,8 @@ const featureDefaults = {
 };
 const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100, brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
 const powerSettings = {
-  toggle: ["badge", "updateBadgeToggle", "badgeToggle", true],
+  toggle: ["powerAcquisition", "updatePowerAcquisition", "powerAcquisitionEnabled", true],
+  badgeToggle: ["badge", "updateBadgeToggle", "badgeToggle", true],
   clockToggle: ["clockToggle", "updateClockToggle", "clockToggle", false],
   powerSummaryToggle: ["powerSummary", "updatePowerSummaryToggle", "powerSummaryToggle", false],
   movingGifProfileToggle: ["movingGifProfile", "updateMovingGifProfileToggle", "movingGifProfileToggle", false],
@@ -29,17 +30,14 @@ async function notifyTab(message) {
   if (tab?.id && tab.url?.includes("chzzk.naver.com")) api.tabs.sendMessage(tab.id, message).catch(() => {});
 }
 
-function updateNextPowerTime(logs, lastAcquisitionTime) {
+function updateNextPowerTime(logs) {
   const now = new Date();
-  let next = lastAcquisitionTime ? new Date(new Date(lastAcquisitionTime).getTime() + 3_600_000) : null;
-  if (!next || next <= now) {
-    const last = logs[0]?.timestamp ? new Date(logs[0].timestamp) : now;
-    next = new Date(now);
-    next.setMinutes(last.getMinutes(), 0, 0);
-    if (next <= now) next.setHours(next.getHours() + 1);
-  }
+  const latest = logs.filter(log => log?.method === 'view').reduce((max, log) => Math.max(max, Date.parse(log.timestamp) || 0), 0);
+  const next = latest ? new Date(latest + 3_600_000) : null;
+  const display = document.getElementById("timeDisplay");
+  if (!next || next <= now) { display.textContent = latest ? "획득 가능 여부 확인 필요" : "획득 기록 없음"; return; }
   const minutes = Math.max(0, Math.ceil((next - now) / 60_000));
-  document.getElementById("timeDisplay").textContent = minutes ? `${Math.floor(minutes / 60)}시간 ${minutes % 60}분 후`.replace(/^0시간 /, "") : "곧 획득 가능";
+  display.textContent = `${Math.floor(minutes / 60)}시간 ${minutes % 60}분 후`.replace(/^0시간 /, "");
 }
 
 async function init() {
@@ -49,7 +47,9 @@ async function init() {
     input.checked = features[input.dataset.feature];
     input.addEventListener("change", async () => {
       features[input.dataset.feature] = input.checked;
-      await api.storage.local.set({ features });
+      const { features: current = {} } = await api.storage.local.get('features');
+      await api.storage.local.set({ features: { ...current, [input.dataset.feature]: input.checked } });
+      if (input.dataset.feature === 'gridBypass') document.getElementById('popupStatus').textContent = 'GRID 설정 변경: 기존 응답을 되돌리려면 방송 탭을 새로고침하세요.';
     });
   }
 
@@ -59,7 +59,7 @@ async function init() {
     const key = input.dataset.trendOption;
     input.value = trendOptions[key];
     input.addEventListener("change", async () => {
-      const value = Math.max(Number(input.min) || 0, Math.min(Number(input.max) || Infinity, Math.floor(Number(input.value) || trendDefaults[key])));
+      const value = Math.max(Number(input.min) || 0, Math.min(Number(input.max) || Infinity, Math.floor(input.value.trim() !== '' && Number.isFinite(Number(input.value)) ? Number(input.value) : trendDefaults[key])));
       input.value = value;
       trendOptions[key] = value;
       await api.storage.local.set({ trendOptions });
@@ -67,6 +67,10 @@ async function init() {
   }
 
   const storedPower = await api.storage.sync.get(Object.values(powerSettings).map(([key]) => key));
+  if (storedPower.powerAcquisition === undefined) {
+    storedPower.powerAcquisition = storedPower.badge ?? true;
+    await api.storage.sync.set({ powerAcquisition: storedPower.powerAcquisition });
+  }
   for (const [id, [key, action, messageKey, defaultValue]] of Object.entries(powerSettings)) {
     const input = document.getElementById(id);
     input.checked = storedPower[key] ?? defaultValue;
@@ -76,9 +80,15 @@ async function init() {
     });
   }
 
-  const { powerLogs = [], lastPowerAcquisitionTime } = await api.storage.local.get(["powerLogs", "lastPowerAcquisitionTime"]);
-  updateNextPowerTime(powerLogs, lastPowerAcquisitionTime);
-  setInterval(() => updateNextPowerTime(powerLogs, lastPowerAcquisitionTime), 1000);
+  let { powerLogs = [] } = await api.storage.local.get("powerLogs");
+  updateNextPowerTime(powerLogs);
+  api.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.powerLogs) {
+      powerLogs = changes.powerLogs.newValue || [];
+      updateNextPowerTime(powerLogs);
+    }
+  });
+  setInterval(() => updateNextPowerTime(powerLogs), 60_000);
   document.getElementById("viewLogs").addEventListener("click", () => api.tabs.create({ url: api.runtime.getURL("log.html") }));
   document.getElementById("testFollowingAlert").addEventListener("click", async () => {
     const status = document.getElementById("popupStatus");
@@ -89,8 +99,8 @@ async function init() {
     }
     const result = await api.tabs.sendMessage(tab.id, { type: "test-following-alert" }).catch(() => null);
     if (!result?.shown) status.textContent = "알림 기능을 켜고 페이지를 새로고침해 주세요.";
-    else if (result.apiOk) status.textContent = `팝업 표시 · 팔로잉 사이드바 감지 (${result.count}개 방송)`;
-    else status.textContent = `팝업 표시 · ${result.error || "팔로잉 사이드바 확인"}`;
+  else if (result.apiOk) status.textContent = `팝업 표시 · 팔로잉 API 확인 (${result.count}개 채널)`;
+  else status.textContent = `팝업 표시 · ${result.error || "팔로잉 API 확인 실패"}`;
   });
 }
 
