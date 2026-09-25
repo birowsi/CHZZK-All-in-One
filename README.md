@@ -19,7 +19,14 @@ Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
 
 `build.ps1`이 만드는 `.xpi`는 ZIP의 복사본인 **미서명 개발용 파일**입니다. 일반 Firefox의 영구 설치에는 Mozilla 서명본이 필요합니다. 서명 전에는 `about:debugging#/runtime/this-firefox`의 **임시 부가 기능 로드**에서 `manifest.json`을 선택해 테스트할 수 있습니다.
 
-영구 설치용 파일은 [Mozilla의 비공개 배포용 서명](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/#sign-your-extension-for-self-distribution)으로 만들 수 있습니다. AMO 개발자 계정에서 API 키를 발급한 뒤, 키와 비밀값을 각각 `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET` 환경 변수로 설정하고 `./sign.ps1`을 실행합니다. 이 스크립트는 현재 소스로 다시 빌드하고 **확장 패키지를 Mozilla에 제출**해 서명본을 `dist/signed-v<버전>/`에 받습니다. 키는 저장소나 패키지에 넣지 않습니다. 스크립트는 Node.js 22 이상과 npm을 사용하며, Firefox 사용 시 별도 프로그램은 필요 없습니다. 서명 심사가 실패하면 AMO 오류를 확인해야 합니다.
+### 가장 쉬운 서명 방법: 웹에서 직접 업로드
+
+1. 평소 쓰는 브라우저에서 [AMO 개발자 허브](https://addons.mozilla.org/developers/)에 Mozilla 계정을 만들고 로그인합니다. 일반 Firefox용 서명에는 계정이 필요합니다. Codex 브라우저에서 로그인할 필요는 없습니다.
+2. **새 부가 기능 제출** → **On your own(직접 배포)**을 선택합니다. 공개 목록에 올리는 옵션이 아닙니다.
+3. 이 폴더의 `dist/chzzk-all-in-one-firefox-v1.1.10.zip`을 업로드하고 화면의 검증·심사 절차를 마칩니다. ZIP은 이미 만들어져 있습니다. 이후 소스를 수정했다면 `.\build.ps1 -ZipOnly`로 새 ZIP을 만듭니다.
+4. [AMO 버전 페이지에서 Mozilla가 서명한 XPI를 내려받습니다](https://extensionworkshop.com/documentation/publish/submitting-an-add-on/). 제출 즉시 발급되지 않을 수 있으며, 검증 오류가 있으면 AMO의 오류 내용을 확인해야 합니다.
+
+반복 서명이 필요할 때만 API 키를 발급해 `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET` 환경 변수를 설정하고 `.\sign.ps1`을 실행할 수 있습니다. 이 스크립트는 패키지를 Mozilla에 제출하고 서명본을 `dist/signed-v<버전>/`에 받습니다. 키는 저장소나 패키지에 넣지 않습니다. 스크립트 실행에는 Node.js 22 이상과 npm이 필요하지만 Firefox 사용 시 별도 프로그램은 필요 없습니다.
 
 서명된 `.xpi`를 Firefox의 `about:addons` → 톱니바퀴 → **파일에서 부가 기능 설치**로 설치합니다. 기존 임시 부가 기능이 켜져 있으면 먼저 제거하고, 설치 후 CHZZK 탭을 새로고침해 이전 페이지 후킹을 없앱니다.
 
