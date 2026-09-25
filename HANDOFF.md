@@ -163,3 +163,10 @@
 - 사용자는 쉽게 서명하기를 요청했다. 공식 AMO 개발자 허브의 수동 업로드 경로를 README의 첫 번째 방법으로 바꿨다. 평소 브라우저에서 Mozilla 계정을 만든 뒤 새 부가 기능 제출 → On your own(직접 배포) → 이미 생성된 1.1.10 ZIP 업로드 → 검증·심사 완료 후 서명 XPI 다운로드 순서다. API 키와 sign.ps1은 반복 서명용 선택 사항으로 남겼다. 별도 런타임 프로그램 설치, 기존 기능 삭제, 버전 변경은 없다.
 - [Mozilla 제출 안내](https://extensionworkshop.com/documentation/publish/submitting-an-add-on/)는 웹 업로드와 직접 배포 옵션 및 서명 XPI 다운로드 경로를 설명한다. 일반 Firefox 서명에는 Mozilla 계정과 AMO 심사가 필요하므로 현 사용자의 계정이 없는 상태에서 서명 XPI를 만들 수 없다. 계정 생성·약관 동의·업로드는 수행하지 않았다.
 - 검증은 문서와 기존 ZIP 존재 여부, 관련 Git diff 공백/삭제 확인으로 제한한다. 확장 실행 코드가 바뀌지 않아 자동 테스트와 빌드를 반복하지 않는다. 실제 서명 XPI 및 Firefox 영구 설치는 미확인이다.
+
+## 2026-09-25 AMO 소스 제출 단계 및 검증 경고
+
+- 사용자가 AMO 업로드 중 두 검증 경고(`MANIFEST_CSP`, `UNSAFE_VAR_ASSIGNMENT`)와 소스 코드 제출 여부 질문을 전달했다. 현재 `manifest.json`의 `script-src 'self' 'wasm-unsafe-eval'`은 녹화 변환용 패키지 내 FFmpeg WASM 컴파일에 필요하다. `tools.js`의 동적 `import()` 인자는 고정된 `browser.runtime.getURL('vendor/hls.light.min.mjs')`이고, 팔로잉 hover 영상에 쓰는 패키지 내 파일만 가리킨다. 공식 Mozilla 문서는 MV3 WebAssembly에 `wasm-unsafe-eval`이 필요하고 content script의 `moz-extension:` 모듈 동적 import를 허용한다고 명시한다. 두 경고는 검토 필요 상태이며 심사 통과를 보장하지 않는다.
+- 소스 제출 질문에는 **Yes**가 맞다. 확장 1차 코드는 읽을 수 있지만 배포 ZIP에 hls.js 축소본과 FFmpeg 코어/바이너리가 있다. Mozilla 정책상 생성·압축 코드가 있으면 원본과 재현 절차를 제공해야 한다. `AMO-SOURCE-README.md`에 Windows/PowerShell 패키징 명령, 의존성 버전·원본 링크, FFmpeg worker의 로컬 코어 import 적응 내용을 기록했다. 별도 소스 묶음 `dist/chzzk-all-in-one-firefox-v1.1.10-source.zip`을 만들었다. 기존 AMO 업로드용 `dist/chzzk-all-in-one-firefox-v1.1.10.zip`과 확장 코드·버전은 변경하지 않았다.
+- 검증: 실제 업로드 ZIP 40개 항목이 소스 묶음에도 모두 있고, 각 항목 SHA-256이 일치한다. 소스 묶음은 61개 항목이며 `node_modules`, 구버전 `dist`, 기존 `firefox`/`example` 자료는 제외했다. hls.js 1.7.3 파일은 공식 npm 배포본과 SHA-256이 일치한다. FFmpeg 코어 ESM JS/WASM 및 wrapper의 6개 파일은 설치된 npm 배포본과 바이트 일치한다. `worker.js`는 로컬 코어를 정적 import하도록 적응한 차이를 소스 안내에 공개했다. `web-ext lint`로 기존 배포 ZIP을 재확인한 결과 오류 0, 경고 2이며 코드 실행·Firefox/CHZZK 실사용은 이번 문서·소스 제출 작업에서 확인하지 않았다.
+- 다음 AMO 화면에서 `Yes`를 선택하고 위 소스 ZIP을 업로드한다. 검토자 메모에는 두 경고의 로컬 코드/WASM 사용 이유와 제3자 원본 링크를 설명한다. 팔로잉·통나무 등 로그인 필요 기능을 검토하려면 사용자가 AMO의 비공개 Notes to Reviewer에 별도 테스트 계정을 제공해야 한다. 자격 증명을 채팅이나 저장소에 넣지 않는다. Mozilla의 실제 심사·서명과 서명 XPI의 Firefox 설치는 아직 미확인이다.
