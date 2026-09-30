@@ -4,8 +4,35 @@
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
 - Firefox 기준 `main`, HEAD `84f1404` (1.1.18 보존), Chrome 작업 브랜치 `codex/chrome-compat`. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
-- Chrome 작업 브랜치의 소스/로컬 빌드는 `1.1.20`다. 이전 1.1.12~1.1.19 작업을 로컬 커밋으로 보존했다. push/AMO 업로드/서명/릴리스는 하지 않았다.
+- 공통 개선/Chrome 작업 브랜치의 소스/로컬 빌드는 `1.1.21`다. 이전 1.1.12~1.1.20 작업을 로컬 커밋으로 보존했다. push/AMO 업로드/서명/릴리스는 하지 않았다.
 - 바탕화면 `C:\Users\hanbi\Desktop\opencode test\치지직\chzzk-all-in-one`과 비교해 추가 QA/인수인계 자료를 통합했다. 그쪽 파일은 수정·이동·삭제하지 않았다. 세부 원인·수정·검증은 문서 마지막 2026-09-29 절에 있다.
+
+## 2026-09-30 광고 없는 시청 치트키 안내 팝업 대응 — 1.1.21
+
+### 기준·증상·원인
+
+- 시작 상태: `codex/chrome-compat`, HEAD `5190dfd`(1.1.20), 작업 트리 깨끗함. 사용자가 제공한 실제 HTML은 `<div class="_container_1l6oy_2" role="alert">` 안에 `광고 방해없이 영상을 시청하고 싶으신가요?`, `모든 채널의 광고를 제거해주는 치지직 치트키를 사용해보세요.`, `https://game.naver.com/profile#cheat_key` 링크 및 `_button_close_...` 닫기 버튼이 있다.
+- 기존 `removeAdPopup`은 popup_container/dialog/alertdialog/modal_container를 찾았으므로 해당 role=alert 컨테이너는 후보에서 제외됐다. 후보에 들어가더라도 `isBlockedPromoNotice`는 광고 차단 프로그램 경고와 타임머신 치트키 구매 안내만 인식해서 이 광고 없는 시청 홍보 문구가 제외됐다. 두 원인은 현재 파일로 확인했다.
+- 사용자는 Firefox에서 uBlock Origin을 함께 사용 중이라고 밝혔다. Chrome과 Firefox 팝업 차이를 uBlock 효과로 단정하지 않는다. 외부 차단기 없이 광고/홍보 팝업을 제거하는 방향으로 공통 코드를 개선한다. 팔로잉 알림 등 기존 사용 기능과 실제 오류 안내는 보존한다.
+
+### 수정과 보존 범위
+
+- `tools.js`의 기존 후보 선택자에 `[role='alert']`를 추가하고, `치지직 치트키`와 `광고 방해 없이 ... 영상/시청` 또는 `모든 채널의 광고를 제거`가 함께 있는 경우만 홍보 대상으로 추가했다. 해시 클래스명에 의존하지 않는다.
+- 기존 `hideAdPopup` 설정(기본 ON), WeakSet 중복 방지, 닫기 버튼 click 및 React DOM 유지 숨김 fallback, OFF 복원, 타임머신 안내의 기존 TM 열기 동작을 유지한다. 새 광고 없는 시청 홍보를 닫을 때 TM을 열지 않는다.
+- 기존 MutationObserver/requestAnimationFrame 처리 경로를 재사용한다. 추가 observer/polling/timer/fetch/XHR patch 없음. 광고 영상/피드 응답의 차단 로직·GRID·화질·TM·REC/MP4·오디오·설정값·사용자 데이터는 변경하지 않았다. 이번 팝업 개선만으로 모든 시작/중간 광고까지 해결됐다고 보고하지 않는다.
+
+### 검증
+
+- 단위 81/81, 기본 회귀 21/21, 오디오 15/15, UI 19/19 통과. 제공한 HTML textContent와 줄바꿈 변형을 인식하고, 오류·로그인·치트키 결제 완료·480p 안내·팔로잉 알림과 치트키 없는 문구는 제외한다.
+- 실제 소스 추출 UI 검사: role=alert 홍보 닫기 1회/중복 클릭 없음, 일반 alert 보존, 기존 광고 차단 경고/타임머신 모달 경로 유지, 닫기 버튼 없는 React DOM의 숨김/inert 적용 및 설정 OFF 복원. 이 검사는 모의 DOM이며 실제 Firefox/CHZZK 닫힘 확인과 구분한다.
+- Chrome Browser Use로 사용자 현재 방송 `/live/a9a343510e132ea3026ff3cf682820b5`를 읽었다. 광고/치트키 관련 alert/dialog는 0개였고 본방송 1920×1080, paused=false, currentTime 약555.5초, video.error 없음이었다. 현재 탭에서 제공 팝업을 재현하지 못했고, 기존 설치본에 새 코드를 반영한 직접 실방송 검증도 아니다. 사이트 DOM을 임의 주입하거나 계정/확장 설정을 조작하지 않았다. Windows native Computer Use/sky 미사용.
+- 변경 JS 문법, git diff --check 및 추적 파일 삭제 없음 확인. 기존 1.1.20 MP4 즉시 저장 수정도 회귀 검사로 보존했다.
+
+### 버전·결과물·남은 확인
+
+- manifest/package/package-lock 두 버전과 Chrome/Firefox 빌드 manifest를 1.1.21로 맞췄다. `dist/chzzk-all-in-one-chrome-v1.1.21/` 및 ZIP, `dist/chzzk-all-in-one-firefox-v1.1.21.zip/.xpi` 생성. Chrome43/Firefox41 항목 유지 및 패키지 tools.js가 소스와 정확히 일치함을 확인한다. Firefox XPI는 미서명이다. 이전 빌드/바탕화면 폴더는 삭제하거나 덮어쓰지 않았다.
+- 사용자는 기존 설치 폴더의 내용만 새 빌드로 덮어쓴 뒤 해당 확장과 방송 탭을 새로고침하면 기존 Chrome ID·설정·로그를 보존할 수 있다. 이번에는 자동 설치/삭제/재로그인/push/서명/업로드를 하지 않았다.
+- 미확인: 1.1.21 반영 후 해당 실제 팝업 닫힘과 재등장 처리, Firefox 외부 차단기 없는 재생, 시작/중간 광고가 실제 공급되는 시나리오. 전체 광고/전체 홍보 팝업 차단을 완료했다고 표시하지 않는다. 다음에 다른 팝업이나 실제 광고가 나타나면 해당 DOM/광고 요청을 구분해 기존 공통 경로를 보강한다.
 
 ## 2026-09-30 MP4 속도 개선 및 로그인 기능 검증 — 1.1.20
 

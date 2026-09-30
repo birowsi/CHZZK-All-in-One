@@ -2,7 +2,7 @@
 
 Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
 
-Firefox 기준은 `main`의 **1.1.18**이며, Chrome 호환 개발은 `codex/chrome-compat`의 **1.1.20**에서 진행합니다. 같은 기능 소스로 브라우저별 빌드를 만듭니다. Chrome 개발 분기의 단위·회귀 검사와 Chromium 148의 확장 등록·녹화 전달·MP4 생성/재생은 확인했습니다. 모든 기능의 실방송 검증이 끝난 상태는 아닙니다.
+Firefox 기준은 `main`의 **1.1.18**이며, 공통 개선과 Chrome 호환 개발은 `codex/chrome-compat`의 **1.1.21**에서 진행합니다. 같은 기능 소스로 브라우저별 빌드를 만듭니다. Chrome 개발 분기의 단위·회귀 검사와 Chromium 148의 확장 등록·녹화 전달·MP4 생성/재생은 확인했습니다. 모든 기능의 실방송 검증이 끝난 상태는 아닙니다.
 
 ## 주요 기능
 
@@ -23,7 +23,7 @@ REC 원본은 CHZZK 전송 파일의 무손실 복사본이 아니라 MediaRecor
 
 ## Chrome 테스트 설치
 
-1. `.\build.ps1 -Browser Chrome`을 실행하면 `dist/chzzk-all-in-one-chrome-v1.1.20/`와 같은 이름의 ZIP이 생성됩니다.
+1. `.\build.ps1 -Browser Chrome`을 실행하면 `dist/chzzk-all-in-one-chrome-v1.1.21/`와 같은 이름의 ZIP이 생성됩니다.
 2. Chrome의 `chrome://extensions`에서 **개발자 모드**를 켭니다.
 3. **압축해제된 확장 프로그램을 로드합니다**를 눌러 위 폴더를 선택합니다. ZIP 파일을 직접 선택하지 않습니다.
 4. CHZZK 탭을 새로고침합니다. SHOT의 탭 캡처를 테스트할 때는 해당 방송 탭에서 확장 아이콘을 눌러 설정 팝업을 한 번 엽니다.

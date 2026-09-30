@@ -475,6 +475,53 @@ function blindProbe(identity = 'message-a') {
   return { text, item, globals, reveal: () => reveal, run: func('tools.js', 'rememberAndRestoreBlindMessages', globals) };
 }
 async function uiMain() {
+  await check('PROMO-ALERT: new cheat-key ad alert closes once; ordinary alerts and old modal paths survive', () => {
+    const closed = [], hidden = [], opened = [];
+    const body = { classList: { toggle() {} } };
+    const make = (name, text, role) => ({
+      textContent: text, role, parentElement: body, isConnected: false,
+      querySelector: () => ({ click: () => closed.push(name) }),
+      setAttribute: () => hidden.push(name),
+    });
+    const nodes = [
+      make('new', '광고 방해없이 영상을 시청하고 싶으신가요?모든 채널의 광고를 제거해주는 치지직 치트키를 사용해보세요.치트키 자세히보기팝업 닫기', 'alert'),
+      make('error', '방송에 오류가 발생했습니다', 'alert'),
+      make('payment', '치지직 치트키 결제를 완료했습니다', 'alert'),
+      make('following', '새 팔로잉 방송이 시작됐습니다', 'alert'),
+      make('old-adblock', '광고 차단 프로그램을 사용 중입니다', 'dialog'),
+      make('old-tm', '치트키를 구매하면 타임머신 기능을 이용할 수 있어요!', 'dialog'),
+    ];
+    const remove = func('tools.js', 'removeAdPopup', {
+      features: { hideAdPopup: true }, dismissedPopups: new WeakSet(),
+      isBlockedPromoNotice: require(path.join(repo, 'tools.js')).isBlockedPromoNotice,
+      popupRemovalRoot: require(path.join(repo, 'tools.js')).popupRemovalRoot,
+      cheatKeyTimeMachinePattern: /치트키를 구매하면 타임머신/, showTimeMachine: () => opened.push('tm'),
+      document: { body, querySelector: () => null, querySelectorAll: selector =>
+        selector === "[aria-modal='true']" ? [] : nodes.filter(n => n.role === 'dialog' || selector.includes("[role='alert']")) },
+    });
+    remove(); remove();
+    assert.deepEqual(closed, ['new', 'old-adblock', 'old-tm']);
+    assert.deepEqual(hidden, []);
+    assert.deepEqual(opened, ['tm']);
+  });
+  await check('PROMO-FALLBACK-OFF: retained React popup hides without deleting DOM and restores when disabled', () => {
+    const attributes = new Set(), body = { classList: { remove() {}, toggle() {} } };
+    const root = { textContent: '모든 채널의 광고를 제거해주는 치지직 치트키를 사용해보세요.', parentElement: body,
+      isConnected: true, querySelector: () => null, querySelectorAll: () => [],
+      setAttribute: name => attributes.add(name), removeAttribute: name => attributes.delete(name), inert: false };
+    const features = { hideAdPopup: true };
+    const remove = func('tools.js', 'removeAdPopup', {
+      features, dismissedPopups: new WeakSet(),
+      isBlockedPromoNotice: require(path.join(repo, 'tools.js')).isBlockedPromoNotice,
+      popupRemovalRoot: require(path.join(repo, 'tools.js')).popupRemovalRoot,
+      cheatKeyTimeMachinePattern: /치트키를 구매하면 타임머신/, showTimeMachine() {},
+      document: { body, querySelector: () => attributes.size ? root : null, querySelectorAll: selector =>
+        selector === "[aria-modal='true']" ? [] : selector === '[data-hanbi-hidden-promo]' ? attributes.size ? [root] : [] : [root] },
+    });
+    remove(); assert.equal(root.inert, true); assert.equal(attributes.has('data-hanbi-hidden-promo'), true);
+    features.hideAdPopup = false; remove();
+    assert.equal(root.inert, false); assert.equal(attributes.size, 0); assert.equal(root.isConnected, true);
+  });
   await check('QUALITY-MISMATCH: actual decoded height is shown without rewriting the site selection', () => {
     let height = 1080, labels = [];
     const button = { textContent: 'Q --', title: '' };

@@ -41,9 +41,11 @@
   const blindNoticePattern = /(?:클린봇이\s*부적절한\s*표현을\s*감지|(?:관리자|운영자).*?(?:블라인드|숨김|삭제|차단|가림)|(?:블라인드|숨김|삭제|차단|가림).*?(?:메시지|채팅))/i;
   const adBlockNoticePattern = /광고\s*차단\s*프로그램.*사용\s*중/i;
   const cheatKeyTimeMachinePattern = /치트키를\s*구매하면\s*타임머신\s*기능을\s*이용할\s*수\s*있어요/i;
+  const cheatKeyAdPattern = /(?:광고\s*방해\s*없이[\s\S]*?(?:영상|시청)|모든\s*채널의\s*광고를\s*제거)/i;
   const isBlindNotice = (text) => blindNoticePattern.test(text || "");
   const isAdBlockNotice = (text) => adBlockNoticePattern.test(text || "");
-  const isBlockedPromoNotice = (text) => isAdBlockNotice(text) || cheatKeyTimeMachinePattern.test(text || "");
+  const isBlockedPromoNotice = (text) => isAdBlockNotice(text) || cheatKeyTimeMachinePattern.test(text || "")
+    || (/치지직\s*치트키/i.test(text || "") && cheatKeyAdPattern.test(text || ""));
   const modalBackdropSelector = "[class*='dimmed'], [class*='backdrop'], [class*='overlay']";
   const needsFirefoxAudioMonitor = (userAgent, audioTrackCount) => userAgent.includes("Firefox") && audioTrackCount > 0;
   const captureReusePlan = (sharedSource, source) => (!sharedSource || !source ? "create" : sharedSource === source ? "reuse" : "replace");
@@ -807,7 +809,7 @@
       dismissedPopups = new WeakSet();
       return;
     }
-    for (const popup of document.querySelectorAll("div[class^='popup_container'], [role='dialog'], [role='alertdialog'], [class*='_modal_'][class*='_container_']")) {
+    for (const popup of document.querySelectorAll("div[class^='popup_container'], [role='dialog'], [role='alertdialog'], [role='alert'], [class*='_modal_'][class*='_container_']")) {
       if (!isBlockedPromoNotice(popup.textContent)) continue;
       const root = popupRemovalRoot(popup, document.body);
       const close = root.querySelector("button[aria-label*='닫'], button[aria-label*='close' i], button[class*='close']")

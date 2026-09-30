@@ -463,3 +463,13 @@ CHZZK URL / 채널 ID:
 - [ ] Firefox 1.1.20 실제 설치·녹화·변환, 장시간 녹화 및 모든 변환 형식 조합.
 - [x] Firefox 1.1.20 결과물에도 공통 MP4/VFR/REC fallback 수정 포함. Firefox 미지원 MediaRecorder MP4에 Chrome 즉시 저장을 보장하지 않음. 실제 Firefox 검증은 위 미완료 항목으로 유지.
 - [ ] LL-HLS RAW, Chrome GRID 첫 안내, 사이트 화질 요약 480p, 장시간 TM 메모리 한도.
+
+## 32. 1.1.21 광고 없는 시청 치트키 홍보 팝업
+
+- [x] 제공된 role=alert/새 안내 문구가 기존 후보·문구 검사에서 누락됨을 코드로 확인.
+- [x] 해시 클래스 없이 기존 팝업 제거 경로에 role=alert/치트키 광고 제거 홍보 문구 추가.
+- [x] 오류·로그인·치트키 결제 완료·화질 안내·팔로잉 알림 보존, 기존 광고 차단 경고/타임머신 경로 유지.
+- [x] 닫기 중복 방지·React DOM 유지 fallback·설정 OFF 복원, 새 observer/timer/네트워크 patch 없음.
+- [x] 단위81/기본회귀21/오디오15/UI19, 문법/diff/추적 파일 삭제 없음.
+- [x] 소스와 브라우저별 패키지 버전1.1.21. 기존 MP4 속도 수정 유지.
+- [ ] 업데이트 후 실제 CHZZK의 새 팝업 닫힘·재등장, Firefox에서 uBlock Origin 없이 시작/중간 광고 제거 확인.

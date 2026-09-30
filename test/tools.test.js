@@ -71,6 +71,13 @@ test("타임머신 치트키 구매 안내를 감지한다", () => {
   assert.equal(isBlockedPromoNotice("타임머신 기능을 이용 중입니다"), false);
 });
 
+test("광고 없는 시청 치트키 홍보만 감지하고 일반 알림은 보존한다", () => {
+  assert.equal(isBlockedPromoNotice("광고 방해없이 영상을 시청하고 싶으신가요?모든 채널의 광고를 제거해주는 치지직 치트키를 사용해보세요.치트키 자세히보기팝업 닫기"), true);
+  assert.equal(isBlockedPromoNotice("광고 방해 없이\n영상을 시청하고 싶으신가요?\n치지직 치트키"), true);
+  assert.equal(isBlockedPromoNotice("모든 채널의 광고를 제거해주는 치지직 치트키를 사용해보세요."), true);
+  for (const text of ["방송에 오류가 발생했습니다", "로그인이 필요합니다", "치지직 치트키 결제를 완료했습니다", "이 중계의 최고 화질은 480p입니다", "새 팔로잉 방송이 시작됐습니다", "광고 방해없이 영상을 시청하고 싶으신가요?"]) assert.equal(isBlockedPromoNotice(text), false);
+});
+
 test("구매 안내 제거 시 딤드 배경까지 포함한 래퍼를 고른다", () => {
   const body = {};
   const backdrop = { matches: () => true };
