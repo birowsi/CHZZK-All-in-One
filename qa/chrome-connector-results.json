@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-30",
+  "sourceCommit": "decf4e4",
+  "sourceVersion": "1.1.19",
+  "installedVersionVerified": false,
+  "method": "Chrome extension browser connector; no Windows native Computer Use",
+  "page": "/live/36ddb9bb4f17593b60f1b63cec86611d",
+  "siteLoggedIn": false,
+  "directChecks": {
+    "chromeGridPrompt": "Required clicking 설치없이 일반 화질 시청",
+    "video": { "width": 1920, "height": 1080, "readyState": 4, "paused": false, "errorCode": null },
+    "quality": { "extension": "Q 1080p", "siteSummary": "해상도 480p", "selectedRow": "480p 실제 출력 1080p" },
+    "timeMachineSeekBack": true,
+    "timeMachineLivePosition": { "currentTime": 141.015861, "bufferEnd": 141.998645, "paused": false },
+    "pausedBuffer": {
+      "before": { "currentTime": 201.994172, "bufferEnd": 205, "paused": true },
+      "after": { "currentTime": 201.994172, "bufferEnd": 257.987978, "paused": true },
+      "liveWhilePaused": { "currentTime": 256.987978, "paused": true },
+      "manualResumeProgressed": true
+    },
+    "compressorToggle": "OFF -> ON -> OFF; video continued; sound not measured",
+    "screenshot": {
+      "previewWidth": 1920,
+      "previewHeight": 1080,
+      "dragBefore": { "left": 512.5, "top": 44.640625 },
+      "dragAfter": { "left": 372.5, "top": 84.640625 },
+      "downloadEvent": "timeout",
+      "fileObserved": "chzzk_20260930T075907.png",
+      "fileObservedBytes": 1826254,
+      "laterHeaderCheck": "ENOENT; cause unverified"
+    },
+    "recording": { "indicator": "REC 00:33", "resultTabTitle": "녹화 완료 · CHZZK All-in-One", "resultContentRead": false },
+    "raw": { "saved": false, "message": "저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요." },
+    "trendManualRefresh": { "before": "17시 5분 53초 ↻", "after": "17시 6분 53초 ↻" },
+    "finalVideo": { "width": 1920, "height": 1080, "currentTime": 855.474146, "paused": false, "errorCode": null },
+    "capturedErrorCount": 0,
+    "capturedWarning": "setPolicyInfo Object"
+  },
+  "userConfirmed": { "recordingPlaybackAndMp4Save": true, "mp4StillSlow": true },
+  "blocked": ["chrome://extensions URL policy", "chrome-extension:// result UI outside HTTP/HTTPS connector scope"],
+  "unverified": ["ads", "log rewards and following while logged in", "compressor sound", "recording audio when muted", "GIF/WebP/trim/split outputs", "long-term buffer and stability", "Firefox actual environment"],
+  "productionCodeChanged": false,
+  "testsRerun": false,
+  "rebuilt": false
+}
