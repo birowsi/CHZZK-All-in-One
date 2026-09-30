@@ -35,7 +35,7 @@
 
 - manifest/package/package-lock 두 버전 및 Firefox/Chrome 패키지 manifest 1.1.22 일치. `dist/chzzk-all-in-one-firefox-v1.1.22.zip/.xpi`와 `dist/chzzk-all-in-one-chrome-v1.1.22/` 및 ZIP 생성. Firefox41/Chrome43 항목 유지, 패키지 tools.js와 소스 일치 확인. 이전 빌드와 바탕화면 폴더는 보존했다.
 - 로컬 XPI는 미서명 개발용이다. 일반 Firefox 영구 설치는 기존 AMO 부가 기능에 1.1.22 ZIP을 제출해 서명본을 받아야 한다. 이번에는 AMO 제출/서명/release/패키지 외부 업로드를 하지 않는다.
-- GitHub source 업데이트: main으로 공통 수정 이력을 fast-forward하고 main 및 codex/chrome-compat을 일반 push한다. 최종 원격 반영 SHA는 아래 완료 기록 및 최종 응답에서 확인한다.
+- GitHub source 업데이트 완료: 수정 커밋 `d99d1fc`(1.1.22)을 main으로 fast-forward하고 `git push origin main codex/chrome-compat` 성공. 원격 main `dacc340→d99d1fc`, 원격 Chrome 분기 신규 생성. force push·reset·rebase·release 없이 원래 Git 이력을 보존했다. 이 완료 기록을 담은 후속 문서 커밋도 두 분기에 반영하며, 최종 SHA는 원격 ref와 로컬 HEAD 대조로 확인한다.
 - 남은 사용자 확인: 기존 Firefox 프로필에 1.1.22 반영 후 방송 탭 새로고침 → COMP OFF 유지 → ON 후 슬라이더를 중간이 아닌 위치로 움직여 즉시 되돌아가지 않는지 확인. 소리의 압축 ON/OFF 차이, REC 중 청취·음소거 녹화는 실제 환경에서 아직 확인하지 않았다. 증상이 남으면 즉시 초기화 시점의 실제 이벤트/컨트롤 교체를 조사해야 하며 이번 보강만으로 원인 확정·완전 정상화라고 표시하지 않는다.
 - 공통 개선/Chrome 작업 브랜치의 소스/로컬 빌드는 `1.1.21`다. 이전 1.1.12~1.1.20 작업을 로컬 커밋으로 보존했다. push/AMO 업로드/서명/릴리스는 하지 않았다.
 - 바탕화면 `C:\Users\hanbi\Desktop\opencode test\치지직\chzzk-all-in-one`과 비교해 추가 QA/인수인계 자료를 통합했다. 그쪽 파일은 수정·이동·삭제하지 않았다. 세부 원인·수정·검증은 문서 마지막 2026-09-29 절에 있다.

@@ -2,7 +2,7 @@
 
 Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
 
-공통 소스 버전은 **1.1.22**이며, 같은 기능 소스로 Firefox와 Chrome 빌드를 만듭니다. `codex/chrome-compat`의 공통 개선을 `main`에 fast-forward로 반영합니다. Firefox 157 임시 프로필에서 컴프레서 ON/OFF·게인 변경·새로고침 후 유지와 조작 중 실제 CHZZK 1080p 재생을 확인했습니다. 청취/DSP 및 사용자의 기존 프로필에서 초기화 문제가 사라지는지는 아직 확인하지 않았습니다. 이전 Chrome 녹화·MP4 검증 범위는 [HANDOFF.md](HANDOFF.md)에 기록하며, 모든 기능의 실방송 검증이 끝난 상태는 아닙니다.
+공통 소스 버전은 **1.1.22**이며, 같은 기능 소스로 Firefox와 Chrome 빌드를 만듭니다. `codex/chrome-compat`의 공통 개선을 `main`에 fast-forward로 반영했습니다. Firefox 157 임시 프로필에서 컴프레서 ON/OFF·게인 변경·새로고침 후 유지와 조작 중 실제 CHZZK 1080p 재생을 확인했습니다. 청취/DSP 및 사용자의 기존 프로필에서 초기화 문제가 사라지는지는 아직 확인하지 않았습니다. 이전 Chrome 녹화·MP4 검증 범위는 [HANDOFF.md](HANDOFF.md)에 기록하며, 모든 기능의 실방송 검증이 끝난 상태는 아닙니다.
 
 ## 주요 기능
 
