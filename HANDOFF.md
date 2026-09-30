@@ -1,9 +1,42 @@
-# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-09-30)
+# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-01)
 
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- Firefox 기준 `main`, HEAD `84f1404` (1.1.18 보존), Chrome 작업 브랜치 `codex/chrome-compat`. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+- 공통 소스·빌드 1.1.22, 작업 브랜치 `codex/chrome-compat`에서 `main`으로 fast-forward 반영. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+
+## 2026-10-01 Firefox 컴프레서 컨트롤 간섭 경로 수정 — 1.1.22
+
+### 사용자 증상과 조사 근거
+
+- 요청: Firefox COMP on/off 수정 및 GitHub 업데이트. 증상은 클릭하거나 슬라이더를 움직인 직후 ON·중간값으로 돌아감. 원격 push는 이번 요청으로 허가되었으며 release 생성·AMO 제출·사용자 프로필 수정은 수행하지 않는다.
+- 실제 저장소 `codex/chrome-compat`, 시작 HEAD `287559a`, 시작 tracked diff 없음. 원격 main은 `dacc340`(1.1.11), 로컬 main은 `84f1404`(1.1.18). 두 main 모두 현재 공통 개발 분기의 조상임을 확인했다. 이력을 재작성하거나 force push하지 않고 이전 1.1.19~21 수정도 함께 반영한다.
+- 사용자 기본 Firefox 프로필의 extensions.json 및 설치 XPI를 읽기 전용으로 확인했다. CHZZK All-in-One 1.1.21 active=true이고 tools.js는 현재 소스와 정확히 일치한다. 서명본 manifest 포맷 차이는 있으나 content_scripts의 파일·world·실행 시점은 일치한다. 다른 CHZZK 관련 별도 확장들은 해당 메타데이터에서 inactive였다. 설정·쿠키·계정·서명본은 변경하지 않았다.
+- 임시 Firefox 157 초기 조사에서 키보드만 사용하는 슬라이더 검사와 일부 클릭이 실패한 실행이 있었다. trusted pointer 조작으로 보완한 기존 소스 검사에서는 ON/OFF·게인·새로고침 유지가 통과했다. 따라서 사용자의 지속적인 즉시 초기화는 동일 환경에서 재현·원인 확정한 것으로 처리하지 않는다. `qa/firefox-compressor-1.1.21.json`은 마지막 baseline 실행 결과이며 앞의 실패 실행 기록은 포함하지 않는다. baseline 영상은 paused=true였으므로 재생 중 성공 근거로 사용하지 않는다.
+- 코드에서 확인된 결함: 컴프레서 root가 사이트 볼륨 컨트롤 클래스와 legacy knife-comp를 사용하고 버튼도 사이트 설정 클래스를 사용함. native 볼륨 DOM이 사라지면 확장 자신을 볼륨 anchor로 선택할 수 있음. 조작 이벤트가 플레이어 부모로 버블링함. 기존 ID의 복제 DOM을 만나면 리스너 없는 컨트롤을 계속 재사용함. 이 조건을 실제 소스 추출 모의 검사로 재현해 수정 전 새 검사 4건 실패/기존 오디오 15건 통과를 확인했다. 실제 사이트가 이 실행에서 DOM을 복제했다는 근거는 없다.
+
+### 최소 수정 및 보존 사항
+
+1. `tools.js`: COMP에 전용 root 클래스 사용, 버튼의 사이트 설정 클래스 제거(일반 pzp-button 스타일 유지). native 볼륨 anchor 검색에서 COMP ID 제외. 동일 버튼·슬라이더·위치와 0~200% 보정 게인 기능을 유지한다.
+2. COMP root의 pointerdown/up·click·input/change·keydown/up 버블링만 차단한다. preventDefault를 호출하지 않아 range 기본 동작을 유지하고 document capture 단계의 기존 AudioContext 재개도 유지한다. 플레이어 전체 이벤트 핸들러는 변경하지 않는다.
+3. WeakSet으로 리스너를 설치한 root를 구분하고, 복제/교체되어 리스너 없는 COMP만 다시 생성한다. ON/OFF 변수와 게인·영상별 오디오 그래프를 DOM 재생성과 함께 초기화하지 않는다. 이미 같은 슬라이더 값에는 value를 다시 쓰지 않는다.
+4. 기존 `hanbi_comp_enabled`/`knifeGain` 저장키와 데이터, DynamicsCompressor 파라미터, 그래프 재사용/원음 bypass/실패 복구/Firefox REC 청취/음소거 녹화 경로는 유지한다. 새 observer·polling·timer·fetch/XHR patch·보조 프로그램을 추가하지 않았다. 별도 Firefox/Chrome 임시 기능 대체 구현도 만들지 않았다.
+
+### 검증 결과와 정확한 범위
+
+- 자동: 단위 81/81, 기본 회귀 21/21, 오디오 19/19(기존 15 + 컨트롤 관련 4), UI 19/19. 합계 140. 변경 JS와 QA 스크립트 문법 및 git diff --check 확인. 추적 파일 삭제 없음.
+- 실제 Firefox 157: 기존 Selenium/geckodriver 및 BiDi 임시 add-on으로 throwaway headless 프로필에서 검사했다. 사용자 Firefox를 닫거나 기존 프로필에 설치·설정 변경하지 않았다. 새 의존성을 설치하지 않았고 바탕화면에 이미 있는 QA node_modules를 NODE_PATH로 참조했다. 재현 시 해당 경로가 없어지면 기존 qa/firefox-e2e/package.json 환경이 필요하다.
+- 실제 CHZZK 비로그인 방송 `/live/75cbf189b3bb8f9f687d2aca0d0a382b`: trusted COMP 클릭, 게인 0·2, 드래그 1.42, OFF, 새로고침 후 OFF/1.42 유지 확인. 재생 요청 후 높이1080 영상이 paused=false, currentTime 29.22→34.92초로 진행하고 error=null을 유지했다. COMP 클릭이 부모 측 테스트 listener로 전달되지 않음(0건), 컨트롤 1개 유지 확인. `qa/firefox-compressor-1.1.22.json`의 9개 검사 통과.
+- 컨트롤 복제 검사는 임시 테스트 탭에 cloneNode(true)로 의도적으로 교체한 fixture다. ON/1.42 보존·리스너 복원·이후 OFF 성공을 확인했으며 자연 발생한 사이트 DOM 복제로 기록하지 않는다. 기존 소스에서 이 시나리오가 실패하는 것은 모의 회귀 검사로 확인했다.
+- headless QA의 media.volume_scale=0 설정을 사용했다. 실제 방송 소리를 청취하거나 DSP 파형/압축 효과를 측정하지 않았다. UI와 재생 확인만으로 컴프레서 음향 효과 및 모든 녹화 회귀를 실제 검증했다고 주장하지 않는다. 콘솔은 사이트 `setPolicyInfo Object(3)` 경고 1건, 수집된 error 0건이다.
+- Chrome Browser Use/Windows native Computer Use/sky를 사용하지 않았다. Chrome 1.1.22 컨트롤은 공통 소스 및 패키지 검사만 수행했다.
+
+### 빌드·배포와 다음 직접 확인
+
+- manifest/package/package-lock 두 버전 및 Firefox/Chrome 패키지 manifest 1.1.22 일치. `dist/chzzk-all-in-one-firefox-v1.1.22.zip/.xpi`와 `dist/chzzk-all-in-one-chrome-v1.1.22/` 및 ZIP 생성. Firefox41/Chrome43 항목 유지, 패키지 tools.js와 소스 일치 확인. 이전 빌드와 바탕화면 폴더는 보존했다.
+- 로컬 XPI는 미서명 개발용이다. 일반 Firefox 영구 설치는 기존 AMO 부가 기능에 1.1.22 ZIP을 제출해 서명본을 받아야 한다. 이번에는 AMO 제출/서명/release/패키지 외부 업로드를 하지 않는다.
+- GitHub source 업데이트: main으로 공통 수정 이력을 fast-forward하고 main 및 codex/chrome-compat을 일반 push한다. 최종 원격 반영 SHA는 아래 완료 기록 및 최종 응답에서 확인한다.
+- 남은 사용자 확인: 기존 Firefox 프로필에 1.1.22 반영 후 방송 탭 새로고침 → COMP OFF 유지 → ON 후 슬라이더를 중간이 아닌 위치로 움직여 즉시 되돌아가지 않는지 확인. 소리의 압축 ON/OFF 차이, REC 중 청취·음소거 녹화는 실제 환경에서 아직 확인하지 않았다. 증상이 남으면 즉시 초기화 시점의 실제 이벤트/컨트롤 교체를 조사해야 하며 이번 보강만으로 원인 확정·완전 정상화라고 표시하지 않는다.
 - 공통 개선/Chrome 작업 브랜치의 소스/로컬 빌드는 `1.1.21`다. 이전 1.1.12~1.1.20 작업을 로컬 커밋으로 보존했다. push/AMO 업로드/서명/릴리스는 하지 않았다.
 - 바탕화면 `C:\Users\hanbi\Desktop\opencode test\치지직\chzzk-all-in-one`과 비교해 추가 QA/인수인계 자료를 통합했다. 그쪽 파일은 수정·이동·삭제하지 않았다. 세부 원인·수정·검증은 문서 마지막 2026-09-29 절에 있다.
 

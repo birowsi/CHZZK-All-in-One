@@ -205,6 +205,7 @@
   let compressorData = null;
   let compressorContext = null;
   const compressorGraphs = new WeakMap();
+  const compressorControls = new WeakSet();
   let compressorEnabled = localStorage.getItem("hanbi_comp_enabled") === "true";
   const savedGain = Number(localStorage.getItem("knifeGain") ?? 1);
   let compressorGain = Number.isFinite(savedGain) ? Math.max(0, Math.min(2, savedGain)) : 1;
@@ -657,16 +658,27 @@
   }
 
   function ensureCompressorControl() {
-    const volumeControl = document.querySelector(".pzp-pc__volume-control, .pzp-pc-volume-control");
+    const volumeControl = document.querySelector(".pzp-pc__volume-control:not(#hanbi-audio-compressor), .pzp-pc-volume-control:not(#hanbi-audio-compressor)");
     let root = document.getElementById("hanbi-audio-compressor");
     if (!volumeControl) {
       root?.remove();
       return;
     }
+    // Cloned player DOM retains IDs but loses listeners. Rebuild only that control;
+    // enabled/gain and the video audio graph belong to this script, not the DOM.
+    if (root && !compressorControls.has(root)) {
+      root.remove();
+      root = null;
+    }
     if (!root) {
       root = document.createElement("span");
       root.id = "hanbi-audio-compressor";
-      root.className = "pzp-pc__volume-control knife-comp";
+      root.className = "hanbi-compressor";
+      // Keep slider defaults/keyboard access, but do not route COMP gestures to
+      // the site's volume/settings handlers. Document capture still resumes audio.
+      for (const type of ["pointerdown", "pointerup", "click", "input", "change", "keydown", "keyup"]) {
+        root.addEventListener(type, (event) => event.stopPropagation());
+      }
 
       const compBtn = button("오디오 컴프레서", "COMP OFF", () => {
         compressorEnabled = !compressorEnabled;
@@ -675,6 +687,7 @@
         syncCompressorControl(root);
       });
       compBtn.dataset.compressorToggle = "1";
+      compBtn.className = "pzp-button hanbi-tool-button";
 
       const compSlider = document.createElement("input");
       compSlider.type = "range";
@@ -689,6 +702,7 @@
         syncCompressorControl(root);
       });
       root.append(compBtn, compSlider);
+      compressorControls.add(root);
     }
     if (root.previousElementSibling !== volumeControl) volumeControl.insertAdjacentElement("afterend", root);
     syncCompressorControl(root);
@@ -702,7 +716,7 @@
     if (buttonElement.textContent !== label) buttonElement.textContent = label;
     buttonElement.classList.toggle("is-recording", active);
     buttonElement.setAttribute("aria-pressed", String(active));
-    slider.value = compressorGain;
+    if (Number(slider.value) !== compressorGain) slider.value = compressorGain;
     slider.hidden = !compressorEnabled;
     slider.title = `컴프레서 보정 게인 ${Math.round(compressorGain * 100)}%`;
     slider.setAttribute("aria-valuetext", `${Math.round(compressorGain * 100)}%`);

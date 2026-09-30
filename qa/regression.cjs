@@ -331,7 +331,63 @@ function audioProbe(fault = '') {
   }
   return { ctx, contexts, nodes };
 }
+function compressorControlProbe() {
+  let root = null, nativePresent = true;
+  const writes = new Map();
+  function element() {
+    return { dataset: {}, children: [], listeners: {}, className: '',
+      classList: { toggle() {} }, setAttribute() {},
+      addEventListener(type, listener) { this.listeners[type] = listener; },
+      append(...children) { this.children.push(...children); },
+      querySelector(selector) { return this.children[selector.includes('toggle') ? 0 : 1]; },
+      remove() { if (root === this) root = null; },
+    };
+  }
+  const volume = { insertAdjacentElement(position, el) { root = el; el.previousElementSibling = volume; } };
+  const ctx = vm.createContext({
+    compressorControls: new WeakSet(), compressorEnabled: true, compressorGain: 0.37,
+    compressorData: { mode: 'compressed', ctx: { state: 'running' } },
+    localStorage: { setItem(key, value) { writes.set(key, String(value)); } },
+    video() { return {}; }, applyCompressorState() {},
+    button(label, text, action) { const el = element(); el.action = action; return el; },
+    document: {
+      getElementById() { return root; }, createElement: element,
+      querySelector(selector) { return nativePresent ? volume : selector.includes(':not(') ? null : root; },
+    },
+  });
+  for (const name of ['ensureCompressorControl', 'syncCompressorControl']) {
+    vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === name), ctx);
+  }
+  return { ctx, writes, root: () => root,
+    cloneRoot() { root = { ...root, children: root.children.map(child => ({ ...child, action: undefined, listeners: {} })), listeners: {} }; },
+    removeNative() { nativePresent = false; },
+  };
+}
 async function audioMain() {
+  await check('COMP-OWN-CONTROL: native player selectors must not match compressor', () => {
+    const p = compressorControlProbe(); p.ctx.ensureCompressorControl();
+    assert.doesNotMatch(p.root().className, /pzp-pc.*volume-control|knife-comp/);
+    assert.doesNotMatch(p.root().children[0].className, /pzp.*setting/);
+  });
+  await check('COMP-NATIVE-REMOVAL: do not use compressor as its own volume anchor', () => {
+    const p = compressorControlProbe(); p.ctx.ensureCompressorControl(); p.removeNative(); p.ctx.ensureCompressorControl();
+    assert.equal(p.root(), null);
+  });
+  await check('COMP-CLONE: rebuild unbound DOM without resetting enabled/gain', () => {
+    const p = compressorControlProbe(); p.ctx.ensureCompressorControl(); p.cloneRoot(); p.ctx.ensureCompressorControl();
+    const root = p.root(); root.children[0].action();
+    assert.equal(p.ctx.compressorEnabled, false); assert.equal(p.writes.get('hanbi_comp_enabled'), 'false');
+    assert.equal(root.children[1].value, 0.37);
+    root.children[1].listeners.input({ target: { value: '0.61' } });
+    assert.equal(p.ctx.compressorGain, 0.61); assert.equal(p.writes.get('knifeGain'), '0.61');
+  });
+  await check('COMP-EVENTS: isolate controls without cancelling native range defaults', () => {
+    const p = compressorControlProbe(); p.ctx.ensureCompressorControl();
+    for (const type of ['pointerdown', 'pointerup', 'click', 'input', 'change', 'keydown', 'keyup']) {
+      let stopped = 0; p.root().listeners[type]({ stopPropagation() { stopped++; }, preventDefault() { throw new Error('default cancelled'); } });
+      assert.equal(stopped, 1);
+    }
+  });
   await check('AUDIO-OFF: untouched video must not create an AudioContext', () => {
     const p = audioProbe(); p.ctx.applyCompressorState({}); assert.equal(p.contexts.length, 0);
   });

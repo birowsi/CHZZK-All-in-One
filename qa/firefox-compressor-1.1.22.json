@@ -1,0 +1,999 @@
+{
+  "version": "1.1.22",
+  "samples": [
+    {
+      "name": "initial",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": null,
+      "events": [],
+      "gain": null,
+      "label": "COMP OFF",
+      "sameInitialRoot": false,
+      "slider": "1",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 0,
+          "height": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0,
+          "width": 0,
+          "x": 0,
+          "y": 0
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": true,
+          "time": 28.001
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "on",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "true",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        }
+      ],
+      "gain": null,
+      "label": "COMP ON",
+      "sameInitialRoot": true,
+      "slider": "1",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 661.433349609375,
+          "height": 20,
+          "left": 430.9666748046875,
+          "right": 502.9666748046875,
+          "top": 641.433349609375,
+          "width": 72,
+          "x": 430.9666748046875,
+          "y": 641.433349609375
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": true,
+          "time": 28.001
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "playback start",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "true",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        }
+      ],
+      "gain": null,
+      "label": "COMP ON",
+      "sameInitialRoot": true,
+      "slider": "1",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 661.433349609375,
+          "height": 20,
+          "left": 430.9666748046875,
+          "right": 502.9666748046875,
+          "top": 641.433349609375,
+          "width": 72,
+          "x": 430.9666748046875,
+          "y": 641.433349609375
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": false,
+          "time": 29.223335
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "gain zero",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "true",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "0"
+        },
+        {
+          "key": "Home",
+          "trusted": true,
+          "type": "keydown",
+          "value": "0"
+        }
+      ],
+      "gain": "0",
+      "label": "COMP ON",
+      "sameInitialRoot": true,
+      "slider": "0",
+      "sliderDetails": {
+        "focused": true,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 661.433349609375,
+          "height": 20,
+          "left": 430.9666748046875,
+          "right": 502.9666748046875,
+          "top": 641.433349609375,
+          "width": 72,
+          "x": 430.9666748046875,
+          "y": 641.433349609375
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": false,
+          "time": 30.226011
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "gain two",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "true",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "0"
+        },
+        {
+          "key": "Home",
+          "trusted": true,
+          "type": "keydown",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "2"
+        },
+        {
+          "key": "End",
+          "trusted": true,
+          "type": "keydown",
+          "value": "2"
+        }
+      ],
+      "gain": "2",
+      "label": "COMP ON",
+      "sameInitialRoot": true,
+      "slider": "2",
+      "sliderDetails": {
+        "focused": true,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 661.433349609375,
+          "height": 20,
+          "left": 430.9666748046875,
+          "right": 502.9666748046875,
+          "top": 641.433349609375,
+          "width": 72,
+          "x": 430.9666748046875,
+          "y": 641.433349609375
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": false,
+          "time": 31.164673
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "drag",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "true",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "0"
+        },
+        {
+          "key": "Home",
+          "trusted": true,
+          "type": "keydown",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "2"
+        },
+        {
+          "key": "End",
+          "trusted": true,
+          "type": "keydown",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.96"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.92"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.89"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.85"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.81"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.77"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.73"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.69"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.66"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.62"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.58"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.54"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.5"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.46"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "1.42"
+        }
+      ],
+      "gain": "1.42",
+      "label": "COMP ON",
+      "sameInitialRoot": true,
+      "slider": "1.42",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 661.433349609375,
+          "height": 20,
+          "left": 430.9666748046875,
+          "right": 502.9666748046875,
+          "top": 641.433349609375,
+          "width": 72,
+          "x": 430.9666748046875,
+          "y": 641.433349609375
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": false,
+          "time": 32.826646
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "injected DOM clone",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "true",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "0"
+        },
+        {
+          "key": "Home",
+          "trusted": true,
+          "type": "keydown",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "2"
+        },
+        {
+          "key": "End",
+          "trusted": true,
+          "type": "keydown",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.96"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.92"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.89"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.85"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.81"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.77"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.73"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.69"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.66"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.62"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.58"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.54"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.5"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.46"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "1.42"
+        }
+      ],
+      "gain": "1.42",
+      "label": "COMP ON",
+      "sameInitialRoot": false,
+      "slider": "1.42",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 661.433349609375,
+          "height": 20,
+          "left": 430.9666748046875,
+          "right": 502.9666748046875,
+          "top": 641.433349609375,
+          "width": 72,
+          "x": 430.9666748046875,
+          "y": 641.433349609375
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": false,
+          "time": 33.607417
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "off",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "false",
+      "events": [
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "0"
+        },
+        {
+          "key": "Home",
+          "trusted": true,
+          "type": "keydown",
+          "value": "0"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "2"
+        },
+        {
+          "key": "End",
+          "trusted": true,
+          "type": "keydown",
+          "value": "2"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.96"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.92"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.89"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.85"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.81"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.77"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.73"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.69"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.66"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.62"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.58"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.54"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.5"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.46"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "input",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "change",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": "1.42"
+        },
+        {
+          "key": null,
+          "trusted": true,
+          "type": "click",
+          "value": ""
+        }
+      ],
+      "gain": "1.42",
+      "label": "COMP OFF",
+      "sameInitialRoot": false,
+      "slider": "1.42",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 0,
+          "height": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0,
+          "width": 0,
+          "x": 0,
+          "y": 0
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": false,
+          "time": 34.916442
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    },
+    {
+      "name": "reload",
+      "bubbled": 0,
+      "controls": 1,
+      "enabled": "false",
+      "events": [],
+      "gain": "1.42",
+      "label": "COMP OFF",
+      "sameInitialRoot": false,
+      "slider": "1.42",
+      "sliderDetails": {
+        "focused": false,
+        "max": "2",
+        "min": "0",
+        "rect": {
+          "bottom": 0,
+          "height": 0,
+          "left": 0,
+          "right": 0,
+          "top": 0,
+          "width": 0,
+          "x": 0,
+          "y": 0
+        },
+        "step": "0.01"
+      },
+      "video": [
+        {
+          "error": null,
+          "height": 1080,
+          "paused": true,
+          "time": 28.000666
+        },
+        {
+          "error": null,
+          "height": 0,
+          "paused": true,
+          "time": 0
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "toggle ON",
+      "pass": true
+    },
+    {
+      "name": "gain zero persists",
+      "pass": true
+    },
+    {
+      "name": "gain two persists",
+      "pass": true
+    },
+    {
+      "name": "drag gain persists",
+      "pass": true
+    },
+    {
+      "name": "playback continues during controls",
+      "pass": true
+    },
+    {
+      "name": "clone keeps ON/gain and one control",
+      "pass": true
+    },
+    {
+      "name": "toggle OFF persists",
+      "pass": true
+    },
+    {
+      "name": "COMP click does not reach player ancestors",
+      "pass": true
+    },
+    {
+      "name": "reload keeps OFF and gain",
+      "pass": true
+    }
+  ],
+  "errors": [
+    {
+      "level": "warn",
+      "text": "setPolicyInfo Object(3)"
+    }
+  ],
+  "browser": "157.0",
+  "channel": "75cbf189b3bb8f9f687d2aca0d0a382b",
+  "playRequest": "resolved",
+  "pass": true
+}
