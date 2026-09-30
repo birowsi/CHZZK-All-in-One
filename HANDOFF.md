@@ -3,9 +3,52 @@
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- `main`, HEAD `dacc340` (1.1.11), 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
-- 현재 소스/로컬 미서명 빌드 `1.1.18`. 이전 1.1.12~1.1.17 작업을 포함한 미커밋 변경을 보존했다. 이번 작업에서는 commit/push/AMO 업로드/서명/릴리스를 하지 않았다.
+- Firefox 기준 `main`, HEAD `84f1404` (1.1.18 보존), Chrome 작업 브랜치 `codex/chrome-compat`. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+- Chrome 작업 브랜치의 소스/로컬 빌드는 `1.1.19`다. 이전 1.1.12~1.1.18 작업을 먼저 로컬 커밋으로 보존했다. push/AMO 업로드/서명/릴리스는 하지 않았다.
 - 바탕화면 `C:\Users\hanbi\Desktop\opencode test\치지직\chzzk-all-in-one`과 비교해 추가 QA/인수인계 자료를 통합했다. 그쪽 파일은 수정·이동·삭제하지 않았다. 세부 원인·수정·검증은 문서 마지막 2026-09-29 절에 있다.
+
+## 2026-09-30 Chrome 테스트 지원 및 브랜치 분리, 1.1.19
+
+### 기준 보존과 범위
+
+- 사용자는 Firefox 컴퓨터 사용이 도구 정책에서 중단된 뒤, 기존 기능을 Chrome에서 그대로 테스트할 수 있게 해달라고 요청했다. 현재 Firefox 코드와 누적 QA/문서를 `main`의 로컬 커밋 `84f1404`로 보존한 뒤 `codex/chrome-compat`을 만들었다. 이전 미커밋 작업은 삭제하거나 초기화하지 않았다. 바탕화면 복사본도 변경하지 않았다.
+- 원본 manifest는 Firefox MV3의 background.scripts, webRequestBlocking, Gecko 설정 및 worker-src blob:을 사용한다. Chrome 로더가 worker-src blob:을 실제 거부했고, Chrome용 서비스 워커 및 CSP가 필요했다. 원본 광고·TM·GRID 재생 정보·UI·변환·로그 로직을 공유하고 브라우저별 API 연결만 추가했다.
+- Chrome 공식 문서의 서비스 워커, 메시지 JSON 직렬화, DNR 규칙을 확인했다. 외부 참고 프로젝트 코드를 복사하거나 의존성을 추가하지 않았다.
+
+### 파일별 수정
+
+1. `build.ps1`: 기본 Firefox 빌드는 유지하고 `-Browser Chrome` 선택지를 추가했다. Chrome 폴더에 기존 배포 파일과 전용 워커/GRID 파일을 복사한 후 manifest를 생성한다. Gecko 설정과 webRequestBlocking을 제외하고 background.service_worker, alarms, Chrome 120 최소 버전, worker-src self를 지정한다. ZIP 내부 manifest와 파일 수를 기존 방식으로 검증한다.
+2. `chrome-worker.js`: 기존 following/grid/log/recording 모듈을 importScripts로 로드하고 공유 background를 실행한다. `background.js`는 Firefox의 blocking 리스너를 그대로 두되 Chrome에서 등록하지 않는다. Chrome 비동기 응답은 sendResponse/return true를 사용해 Promise listener 지원 배포 여부에 의존하지 않는다.
+3. `chrome-grid.js`: CHZZK 탭 ID와 알려진 CDN, 재생목록 요청에만 세션 리다이렉트 규칙을 적용한다. 경로의 480p만 1080p로 바꾸며 서명·쿼리는 유지한다. 수동 화질 선택 탭은 제외하고 채널 이동/재로드 때 해제한다. 고화질 오류는 정확한 원본 URL을 60초 동안 허용한다. 수동 선택/실패 상태를 storage.session에 저장하고 Chrome alarm으로 만료해 워커 재시작에도 동작한다. Firefox의 즉시 응답 리다이렉트와 달리 Chrome은 플레이어의 다음 원본 재시도에 의존하며, 첫 실패가 잠깐 보일 수 있다.
+4. `recording-transport.js`: Firefox는 기존 Blob 메시지로 저장한다. Chrome은 최대 256 KiB 바이트를 base64 JSON으로 나눠 전송하고 기존 IndexedDB에 같은 Blob/메타데이터로 저장한다. 순서·총 크기·발신 탭/문서를 확인하며 전송 실패는 기존 원본 저장 fallback으로 이어진다. 완료 전 메모리 전송은 워커 중단에 취약할 수 있고, 완료 데이터는 IDB로 복원한다. 동시 미완료 업로드 4개 제한, 닫힌 탭의 전송 해제, 5분 이상 방치된 전송의 다음 시작 시 정리를 추가했다. 장시간 파일의 실제 메모리/속도는 추가 확인이 필요하다.
+5. `tools.js`/`record-result.js`/HTML/manifest: 기존 REC→전용 결과 창·원본/MP4/GIF/WebP/자르기/분할 흐름을 그대로 transport에 연결한다. MAIN 광고·TM 코드와 사용자 요청에 따른 PIP 비활성화는 유지했다. RAW도 기존 경로를 유지했다.
+6. 실제 Chrome REC 결과에서 WebM duration이 Infinity여서 자르기/분할이 막힐 수 있는 문제를 확인했다. 결과 창이 로컬 디코더로 파일 끝을 확인하고 원래 위치를 복원해 길이를 계산한다. 기존 유한 길이 파일에는 적용하지 않으며 확인 제한은 5초다. 실제 2.5초 녹화 길이 표시를 확인했다.
+
+### 자동 검사 및 빌드
+
+- 단위 76/76, 기본 회귀 20/20, 오디오 15/15, UI 17/17 통과. Chrome JSON 왕복으로 큰 녹화 두 건, 입력 순서/소유자/저장 오류, Firefox Blob 유지, GRID 적용 범위·수동 선택·403/네트워크 오류·만료·워커 상태 복원을 테스트했다.
+- 수정/추가 JS 8개와 QA 파일 문법 검사를 수행했다. git diff --check 통과, 파일 삭제 없음.
+- Chrome 압축해제 폴더 및 ZIP 43개 파일, Firefox ZIP/XPI 41개 파일을 생성했다. 추가 파일 때문에 이전 40개에서 늘었으며 기존 파일을 제외하지 않았다. 각 압축 파일의 바이트를 대응 소스/Chrome 폴더와 대조했다. 소스 manifest/package/lockfile 및 양 브라우저 내부 manifest가 1.1.19다.
+- Chrome ZIP SHA-256: `BDE70E5672FB1B10BDCC4A651D82F880296F5B1ED843D106F1EA7B3880EB1E53`.
+- Firefox ZIP/XPI SHA-256: `1FB5F74D6DC936BD6D5AF71B7A2CECCE6D44D90A0863A789C27C7B3209996516`. Firefox XPI는 미서명이다.
+
+### Chromium 및 실제 CHZZK 확인
+
+- 설치돼 있던 Playwright 런타임/Chromium 148.0.7778.96을 임시 프로필로 사용했다. 새 브라우저/보조 프로그램을 설치하지 않았고 사용자 Chrome 144 프로필이나 Firefox 1.1.17 설치를 변경하지 않았다. 테스트 브라우저와 임시 프로필은 종료·정리했다.
+- 실제 확장 등록, 서비스 워커 시작, 설정 페이지, 합성 VP8/Opus 녹화 전달과 같은 바이트 복원, 1 MiB 이상 분할 전송 복원, 전용 결과 창 영상 320×180 재생, MP4 변환 다운로드 및 출력 MP4 320×180/약 1.17초 재생, 워커 강제 중지 후 기존 녹화 재조회가 통과했다.
+- 초기 CSP 오류는 Chrome manifest 생성에서 수정했다. 디버그 CDP와 명령행 방식의 중복 로드가 송수신 ID 불일치를 만든 것은 테스트 환경 문제였고, 단일 로드로 해결했다. 이 진단용 로그는 최종 소스에서 제거했다.
+- 실제 CHZZK 공개 방송에서 약 10초 동안 영상 시간이 계속 진행하고 errorCode가 null인 것을 확인했다. 툴바 REC/RAW/SHOT/Q/TM이 표시됐고, REC→STOP→결과 창에서 VP9/Opus 녹화 852×480/약 2.5초를 재생했다. Q 480p는 해당 영상의 실제 높이와 일치했다. 실제 DNR testMatchOutcome에서도 Chrome 업그레이드 규칙이 일치했다.
+- 일부 접속은 30초 내 video 요소가 생성되지 않아 대기 제한에 걸렸다. 그때 재생목록 요청도 없고 GRID 실패 기록도 없었으며 확장 원인으로 특정하지 않았다. 확인한 방송에는 아시안게임 SPOTV가 포함되고 480p였다. 일반 방송 1080p 정상화의 근거로 사용하지 않는다.
+- Chrome의 실제 요청 엔진에 로컬 테스트 응답을 제공해 480p→1080p 변경, 1080p의 HTTP 403, 원본 URL 재시도의 480p HTTP 200을 확인했다. 실제 방송 서버에서 1080p를 확보했다는 뜻은 아니다. QA 결과의 fixture 요청은 실제 CHZZK 요청과 별도로 표시한다.
+- 실제 CHZZK에서 TM 패널의 `버퍼 유지 ON · 저장 17초 · LIVE −3초` 상태와 −30초 버튼의 과거 버퍼 탐색을 확인했다. LIVE 버튼 클릭·패널 닫기도 수행했으나 복귀 뒤 영상 진행을 별도로 검증하지 않았으며 장시간 버퍼·일시정지 상태는 미확인이다.
+- 해당 방송의 RAW는 `저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다`라는 기존 보호 로직으로 중단됐다. 이 방송에서 RAW 저장 성공을 보고하지 않는다. 지원되는 일반 TS/fMP4 방송의 파일 저장·오디오·재생은 여전히 확인해야 한다. 초기 QA가 자동 중단 뒤 RAW 버튼을 다시 눌러 다운로드를 기다리는 오류를 수정해, 지원 불가 결과를 기록하고 TM 검사까지 진행하게 했다.
+- `qa/chrome-e2e.cjs`, `qa/chrome-e2e-results.json`, `qa/chrome-live-preview.png`에 도구·결과·화면을 남겼다. coreChecksFromPreviousRun이 true이면 같은 빌드의 직전 녹화 바이트/MP4/워커 복원 검사 결과를 재사용한 것이며 reusedChecks 목록으로 이번 실방송 검사와 구분한다. 최종 실방송 검사 exit 0, 수집된 console error 0건이다. 간헐적인 최초 로드의 video 부재 및 REC 버튼 표시 대기 실패는 이전 시행에서 있었고 모든 시작 조건의 안정성을 보장하지 않는다.
+
+### 남은 실환경 검증
+
+- 사용자 일반 Chrome 144에 설치한 직접 UI 검증, 실제 광고 시작/중간 광고·경고 모달, 일반 방송 1080p 및 업그레이드 오류 후 원본 재시도.
+- 로그인 계정의 통나무 실제 획득·보유량·로그, 팔로잉 미리보기/알림, 컴프레서 음향, 음소거 녹화 오디오, SHOT 캡처 권한/미리보기/드래그, GIF/WebP/자르기/분할 출력 전부, 장시간 RAW/REC·다중 탭·장시간 TM 버퍼.
+- 사용자 Firefox 실환경 1.1.19는 확인하지 않았다. main의 Firefox 1.1.18과 기존 설치본은 보존했다. 앞서 확인된 Firefox MSE quota 및 통나무의 클릭 직후 추정 로그 문제는 이번 Chrome 호환 작업에서 해결한 것으로 보고하지 않는다.
 
 ## 2026-09-30 광고 응답 경계 처리 및 재생 호환성 보강, 1.1.18
 

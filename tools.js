@@ -439,10 +439,7 @@
     status("녹화 결과 창을 여는 중…");
     const name = fileName("webm").replace(/\.webm$/, "");
     try {
-      await api.runtime.sendMessage({
-        type: "recording-complete",
-        recording: { blob, fileName: name, mimeType: type, startedAt: session.startedAt, stoppedAt: Date.now() },
-      });
+      await HanbiRecordingTransport.save(api, { blob, fileName: name, mimeType: type, startedAt: session.startedAt, stoppedAt: Date.now() });
       status("녹화 결과 창을 열었습니다.");
     } catch (error) {
       const url = URL.createObjectURL(blob);

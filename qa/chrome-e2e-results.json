@@ -1,0 +1,210 @@
+{
+  "version": "1.1.19",
+  "checks": {
+    "extensionLoaded": true,
+    "recordingTransport": {
+      "id": "10e3c6f0-6642-4777-92f0-e0144d365a9c",
+      "size": 28934,
+      "equal": true,
+      "largeEqual": true,
+      "mimeType": "video/webm;codecs=vp8,opus"
+    },
+    "resultVideo": {
+      "width": 320,
+      "height": 180,
+      "status": "원본 저장 또는 원하는 형식으로 변환할 수 있습니다."
+    },
+    "mp4Download": {
+      "name": "600aaa72-89d1-4c87-aa17-585740b1aa2e.mp4",
+      "bytes": 53834
+    },
+    "mp4Playback": {
+      "width": 320,
+      "height": 180,
+      "duration": 1.167
+    },
+    "recordingAfterWorkerRestart": true,
+    "gridRuleMatched": true,
+    "toolbar": "REC\nRAW\nSHOT\nQ 480p\nTM",
+    "liveRecording": {
+      "width": 852,
+      "height": 480,
+      "duration": 2.607,
+      "metadata": "2.6초 · 0.7 MB · video/webm;codecs=vp9,opus"
+    },
+    "gridFixtureFallback": {
+      "firstStatus": 403,
+      "retryStatus": 200,
+      "requests": [
+        "1080p",
+        "480p"
+      ]
+    },
+    "rawDownload": {
+      "supported": false,
+      "reason": "저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요."
+    },
+    "timeMachine": {
+      "status": "버퍼 유지 ON · 저장 17초 · LIVE −3초",
+      "seekedBack": true
+    }
+  },
+  "errors": [],
+  "browser": "148.0.7778.96",
+  "live": {
+    "page": "/live/75cbf189b3bb8f9f687d2aca0d0a382b",
+    "before": [
+      {
+        "width": 853,
+        "height": 480,
+        "currentTime": 3.9963,
+        "paused": false,
+        "error": null
+      }
+    ],
+    "after": [
+      {
+        "width": 853,
+        "height": 480,
+        "currentTime": 13.947265,
+        "paused": false,
+        "error": null
+      }
+    ],
+    "progressing": true
+  },
+  "playlists": [
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "live.navercdn.com",
+      "quality": "1080p",
+      "status": 403,
+      "source": "fixture"
+    },
+    {
+      "host": "live.navercdn.com",
+      "quality": "480p",
+      "status": 200,
+      "source": "fixture"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    },
+    {
+      "host": "ex-nlive-streaming.navercdn.com",
+      "quality": "other",
+      "status": 200,
+      "source": "site"
+    }
+  ],
+  "coreChecksFromPreviousRun": true,
+  "rawMessages": [
+    {
+      "id": 1,
+      "ok": true,
+      "active": true
+    },
+    {
+      "error": "저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요."
+    }
+  ],
+  "reusedChecks": [
+    "recordingTransport",
+    "resultVideo",
+    "mp4Download",
+    "mp4Playback",
+    "recordingAfterWorkerRestart"
+  ]
+}

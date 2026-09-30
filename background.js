@@ -1,6 +1,9 @@
 const extensionApi = globalThis.browser ?? globalThis.chrome;
 const recordingStore = HanbiRecordingStore.createStore();
 const powerLogStore = HanbiLogs.createStore(extensionApi);
+const chromeRuntime = !!extensionApi.runtime.getManifest?.().background?.service_worker;
+const chromeRecordings = chromeRuntime ? HanbiRecordingTransport.createReceiver(recordingStore,
+  id => extensionApi.tabs.create({ url: extensionApi.runtime.getURL(`record-result.html?id=${id}`) })) : null;
 let followingSnapshotQueue = Promise.resolve();
 let followingPoll = null;
 let nextPollId = 0;
@@ -9,12 +12,13 @@ let gridEnabled = false;
 const failedUpgrades = new Map();
 const redirectedStreams = new Map();
 const manualQualityPaths = new Map();
-extensionApi.tabs.onRemoved.addListener(tabId => manualQualityPaths.delete(tabId));
+extensionApi.tabs.onRemoved.addListener(tabId => { manualQualityPaths.delete(tabId); chromeRecordings?.cancelTab(tabId); });
 extensionApi.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === 'loading' || change.url) manualQualityPaths.delete(tabId);
 });
 const streamFilter = { urls: ["https://*.navercdn.com/*", "https://*.pstatic.net/*", "https://*.akamaized.net/*"], types: ["xmlhttprequest", "media"] };
 
+if (!chromeRuntime) {
 extensionApi.webRequest.onBeforeRequest.addListener(async (details) => {
   const manualPath = manualQualityPaths.get(details.tabId);
   if (manualPath && [details.documentUrl, details.originUrl].some(url => {
@@ -50,11 +54,13 @@ for (const event of [extensionApi.webRequest.onCompleted, extensionApi.webReques
     redirectedStreams.delete(details.requestId);
   }, streamFilter);
 }
+}
 
 async function syncGridBypass() {
   const { os } = await extensionApi.runtime.getPlatformInfo();
   const { features = {} } = await extensionApi.storage.local.get("features");
   gridEnabled = os === "win" && features.gridBypass !== false;
+  if (chromeRuntime) await HanbiChromeGrid.sync(gridEnabled);
 
   await extensionApi.declarativeNetRequest.updateEnabledRulesets({
     enableRulesetIds: [],
@@ -85,9 +91,14 @@ async function saveFollowingSnapshot(message, sender) {
   return result.alerts;
 }
 
-extensionApi.runtime.onMessage.addListener((message, sender) => {
+function handleMessage(message, sender) {
+  if (chromeRecordings) {
+    const result = chromeRecordings(message, sender);
+    if (result !== undefined) return result;
+  }
   if (message?.type === 'quality-manual' && sender.tab && typeof message.path === 'string') {
     manualQualityPaths.set(sender.tab.id, message.path);
+    if (chromeRuntime) return HanbiChromeGrid.setManual(sender.tab.id, message.path).then(() => ({ ok: true }));
     return Promise.resolve({ ok: true });
   }
   if (message?.type === 'power-logs') {
@@ -129,4 +140,10 @@ extensionApi.runtime.onMessage.addListener((message, sender) => {
     return recordingStore.delete(message.id).then(() => ({ ok: true }));
   }
   return undefined;
+}
+extensionApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const result = handleMessage(message, sender);
+  if (!chromeRuntime || result === undefined) return result;
+  Promise.resolve(result).then(sendResponse, error => sendResponse({ __hanbiError: error.message }));
+  return true;
 });

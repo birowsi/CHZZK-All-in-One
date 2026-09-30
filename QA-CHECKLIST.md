@@ -419,3 +419,16 @@ CHZZK URL / 채널 ID:
 - [x] Uint16Array 원소 변환, Uint8Array buffer offset/length 및 범위 오류 보존 자동 테스트.
 - [ ] Firefox에서 일반 방송 시작·중간 광고 후 본편 재생 및 광고 차단 경고 제거를 확인한다.
 - [ ] 채널 이동 및 GRID ON/OFF 후 00:00 멈춤 없이 재생하며 일반 1080p와 제한 중계 가용 화질을 보존한다.
+
+## 29. 1.1.19 Chrome 호환 분기
+
+- [x] Chrome manifest 실제 등록 및 서비스 워커 시작 (Chromium 148).
+- [x] 실제 JSON 메시지로 녹화 바이트 및 1 MiB 이상 분할 전송 보존, 워커 재시작 후 IDB 복원.
+- [x] 전용 결과 창 재생, 합성 VP8→MP4 생성·다운로드 및 출력 파일 재생.
+- [x] 실제 CHZZK 480p 영상 진행 및 REC→STOP→VP9 결과 재생·녹화 길이 표시.
+- [x] DNR 규칙 Chrome testMatchOutcome 일치. 실제 1080p 확보와 동일한 검증은 아니다.
+- [x] Chromium 실제 요청 엔진과 로컬 응답 fixture로 1080p HTTP 403 후 원본 480p HTTP 200 재시도.
+- [x] 실제 CHZZK TM 버퍼 유지 ON 상태와 과거 버퍼 탐색.
+- [ ] RAW 파일 실제 저장·재생. 검증 방송은 저지연 HLS 부분 조각이라 기존 보호 로직으로 중단됨.
+- [ ] TM LIVE 복귀 후 재생 진행, 장시간 버퍼 및 일시정지 유지.
+- [ ] 사용자 Chrome 설치, 실제 광고, 일반 1080p, 실패 fallback, COMP 음향, SHOT, 로그인 통나무·팔로잉, 변환 전체 및 장시간 동작.

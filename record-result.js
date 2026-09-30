@@ -144,15 +144,39 @@ document.getElementById("split-form").addEventListener("submit", (event) => {
   convert("split", { seconds: document.getElementById("split-seconds").value, format: document.getElementById("split-format").value });
 });
 
-video.addEventListener("loadedmetadata", () => {
+function updateRecordingMetadata() {
+  if (!recording?.blob) return;
   const duration = Number.isFinite(video.duration) ? `${video.duration.toFixed(1)}초` : "길이 계산 불가";
   const size = `${(recording.blob.size / 1024 / 1024).toFixed(1)} MB`;
   document.getElementById("file-meta").textContent = `${duration} · ${size} · ${recording.mimeType}`;
   if (Number.isFinite(video.duration)) document.getElementById("trim-end").value = video.duration.toFixed(1);
+}
+video.addEventListener('durationchange', updateRecordingMetadata);
+video.addEventListener("loadedmetadata", () => {
+  updateRecordingMetadata();
+  if (Number.isFinite(video.duration)) return;
+  // MediaRecorder WebM may omit duration. Let the local media decoder find its end.
+  const originalTime = video.currentTime;
+  let timer;
+  const finish = () => {
+    if (!Number.isFinite(video.duration)) return;
+    cleanup();
+    video.currentTime = Math.min(originalTime, video.duration);
+    updateRecordingMetadata();
+  };
+  const cleanup = () => {
+    clearTimeout(timer);
+    video.removeEventListener('durationchange', finish);
+    video.removeEventListener('timeupdate', finish);
+    video.removeEventListener('seeked', finish);
+  };
+  for (const event of ['durationchange', 'timeupdate', 'seeked']) video.addEventListener(event, finish);
+  timer = setTimeout(() => { cleanup(); if (Number.isFinite(video.currentTime)) video.currentTime = originalTime; }, 5000);
+  try { video.currentTime = Number.MAX_SAFE_INTEGER; } catch (_) { cleanup(); }
 });
 
 try {
-  recording = await api.runtime.sendMessage({ type: "get-recording", id: recordingId });
+  recording = await HanbiRecordingTransport.read(api, recordingId);
   if (!(recording?.blob instanceof Blob)) throw new Error("녹화 데이터를 받지 못했습니다. 방송 탭에서 다시 녹화해 주세요.");
   recordingUrl = URL.createObjectURL(recording.blob);
   video.src = recordingUrl;
@@ -171,7 +195,7 @@ window.addEventListener("pagehide", () => {
 document.getElementById('delete-recording').addEventListener('click', async () => {
   if (!confirm('브라우저에 보관된 이 녹화를 삭제할까요? 다운로드한 파일은 유지됩니다.')) return;
   try {
-    await api.runtime.sendMessage({ type: 'delete-recording', id: recordingId });
+    await HanbiRecordingTransport.request(api, { type: 'delete-recording', id: recordingId });
     video.pause(); video.removeAttribute('src'); video.load();
     if (recordingUrl) URL.revokeObjectURL(recordingUrl);
     recording = null; setBusy(false); setStatus('보관된 녹화를 삭제했습니다.');
