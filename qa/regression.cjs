@@ -261,6 +261,19 @@ async function main() {
     await convert('trim', { start: 5, end: 4 });
     assert.equal(shown, true);
   });
+  await check('CONVERT-NATIVE-MP4: verified AVC/AAC downloads the original without loading FFmpeg', async () => {
+    const calls = [], busy = [];
+    const convert = func('record-result.js', 'convert', {
+      ...require(path.join(repo, 'record-result-logic.js')),
+      recording: { mimeType: 'video/mp4;codecs=avc1.420028,mp4a.40.2', fileName: 'native' }, recordingUrl: 'blob:original',
+      download: async (...args) => calls.push(args), safeName: name => name,
+      loadFFmpeg: () => { throw new Error('must not encode'); },
+      setStatus() {}, setBusy: value => busy.push(value), progress: { removeAttribute() {} }, progressText: {}, console: quiet,
+    });
+    await convert('mp4');
+    assert.deepEqual(calls, [['blob:original', 'native.mp4']]);
+    assert.deepEqual(busy, [true, false]);
+  });
   await check('TIMESHIFT-FALLBACK: failed seek must not consume native shortcut', async () => {
     let prevented = false;
     const handler = func('tools.js', 'handleArrowSeek', {
@@ -425,7 +438,8 @@ async function audioMain() {
     const ctx = vm.createContext({
       location: { pathname: '/live/test' }, clearInterval() {}, recording: null, video: () => ({ videoWidth: 1920, videoHeight: 1080, captureStream: () => stream }), chooseRecorderMime: () => '',
       recordingVideoBitrate: require(path.join(repo, 'tools.js')).recordingVideoBitrate,
-      MediaRecorder: class { constructor(_stream, value) { options = value; } addEventListener() {} start() { throw new Error('start unavailable'); } },
+      startRecordingRecorder: require(path.join(repo, 'tools.js')).startRecordingRecorder,
+      MediaRecorder: class { constructor(_stream, value) { options = value; } addEventListener() {} removeEventListener() {} start() { throw new Error('start unavailable'); } },
       acquireCapture: () => ({ stream, shared: false }),
     });
     vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'toggleRecording'), ctx);

@@ -1,0 +1,77 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>CHZZK 녹화 변환 속도 검사</title>
+<style>body{background:#111;color:#eee;font:16px sans-serif;padding:24px}button{padding:12px}video{width:480px;display:block}pre{white-space:pre-wrap}</style>
+<h1>로컬 1080p 녹화·MP4 검사</h1><p>합성 영상과 오디오만 사용합니다. 외부 업로드·마이크·카메라 접근 없음.</p>
+<button id="run">속도 검사 시작</button><button id="formats">출력 형식 회귀 검사</button><video id="preview" controls></video><img id="image-preview" width="320"><pre id="result">대기</pre>
+<script src="/record-result-logic.js"></script><script type="module">
+import { FFmpeg } from '/vendor/ffmpeg/wrapper/index.js';
+const result = document.querySelector('#result'), run = document.querySelector('#run'), video = document.querySelector('video');
+const report = { types: {}, recordings: [], loadMs: 0, conversions: [] };
+const types = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1,mp4a.40.2','video/webm;codecs=vp8,opus'];
+for (const type of types) report.types[type] = MediaRecorder.isTypeSupported(type);
+result.textContent = JSON.stringify(report, null, 2);
+const draw = canvas => { const ctx=canvas.getContext('2d'); let frame=0; return setInterval(()=>{ frame++; ctx.fillStyle='#171717';ctx.fillRect(0,0,1920,1080); for(let i=0;i<120;i++){ctx.fillStyle=`hsl(${(i*37+frame*5)%360} 70% 50%)`;ctx.fillRect((i*139+frame*11)%1920,(i*71+frame*7)%1080,80,80);}ctx.fillStyle='white';ctx.font='60px sans-serif';ctx.fillText(String(frame),100,200);},1000/60); };
+async function record(type) {
+  const canvas=document.createElement('canvas');canvas.width=1920;canvas.height=1080;
+  const stream=canvas.captureStream(60), audio=new AudioContext();await audio.resume();
+  const oscillator=audio.createOscillator(),output=audio.createMediaStreamDestination();oscillator.connect(output);oscillator.start();stream.addTrack(output.stream.getAudioTracks()[0]);
+  const recorder=new MediaRecorder(stream,{mimeType:type,videoBitsPerSecond:12000000,audioBitsPerSecond:192000}),chunks=[];
+  const stopped=new Promise((resolve,reject)=>{recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);recorder.onstop=resolve;recorder.onerror=e=>reject(e.error);});
+  const timer=draw(canvas);recorder.start(1000);await new Promise(r=>setTimeout(r,4000));recorder.stop();await stopped;
+  clearInterval(timer);stream.getTracks().forEach(t=>t.stop());oscillator.stop();await audio.close();
+  return new Blob(chunks,{type:recorder.mimeType});
+}
+async function playback(blob) {video.src=URL.createObjectURL(blob);await new Promise((resolve,reject)=>{video.onloadeddata=resolve;video.onerror=()=>reject(new Error('출력 재생 실패'));});return {width:video.videoWidth,height:video.videoHeight,duration:Number.isFinite(video.duration)?video.duration:null};}
+run.onclick=async()=>{run.disabled=true;try{
+  const clips=[];const native=types.slice(0,2).find(t=>report.types[t]);
+  for(const type of [types[2],native].filter(Boolean)){result.textContent='녹화 중: '+type;const blob=await record(type);clips.push(blob);report.recordings.push({mime:blob.type,bytes:blob.size,playback:await playback(blob)});}
+  result.textContent='변환기 로딩 중';
+  const engine=new FFmpeg(), logs=[];engine.on('log',e=>logs.push(e.message));let t=performance.now();await engine.load({coreURL:'/vendor/ffmpeg/core/ffmpeg-core.js',wasmURL:'/vendor/ffmpeg/core/ffmpeg-core.wasm'});report.loadMs=performance.now()-t;
+  for(const blob of clips){t=performance.now();await engine.writeFile('input',new Uint8Array(await blob.arrayBuffer()));const writeMs=performance.now()-t;t=performance.now();const copy=blob.type.startsWith('video/mp4');const args=copy?['-c','copy','-movflags','+faststart']:HanbiRecorderLogic.conversionSpec('mp4').args;
+    result.textContent=copy?'MP4 무재인코딩 처리 중':'WebM → MP4 인코딩 중';
+    const code=await engine.exec(['-i','input',...args,'output.mp4']);const encodeMs=performance.now()-t;if(code)throw new Error('변환 실패 '+code);t=performance.now();const bytes=await engine.readFile('output.mp4');const readMs=performance.now()-t;const output=new Blob([bytes],{type:'video/mp4'});
+    logs.length=0;const decoded=await engine.exec(['-i','output.mp4','-f','null','-']);report.conversions.push({inputMime:blob.type,mode:copy?'copy':'encode',writeMs,encodeMs,readMs,bytes:output.size,playback:await playback(output),decoded,streams:logs.filter(l=>/Stream #.*(Video:|Audio:)/.test(l))});await engine.deleteFile('input');await engine.deleteFile('output.mp4');
+    if(copy){if(!HanbiRecorderLogic.isCompatibleMp4(blob.type))throw new Error('직접 저장 MIME 검증 실패');t=performance.now();const direct=blob;report.nativeDirect={prepareMs:performance.now()-t,bytes:direct.size,playback:await playback(direct)};}
+  }engine.terminate();report.done=true;
+}catch(error){report.error=error.message;}finally{result.textContent=JSON.stringify(report,null,2);run.disabled=false;}};
+document.querySelector('#formats').onclick=async()=>{
+  const button=document.querySelector('#formats');button.disabled=run.disabled=true;
+  const formats={checks:[]},engine=new FFmpeg();
+  try {
+    if(!video.src.startsWith('blob:')){
+      const native=types.slice(0,2).find(t=>report.types[t]);
+      if(!native)throw new Error('이 브라우저는 MP4 직접 녹화를 지원하지 않습니다.');
+      result.textContent='형식 검사용 MP4 녹화 중';await playback(await record(native));
+    }
+    // The source is only the synthetic clip generated above, never a broadcast.
+    const blob=await (await fetch(video.src)).blob();
+    await engine.load({coreURL:'/vendor/ffmpeg/core/ffmpeg-core.js',wasmURL:'/vendor/ffmpeg/core/ffmpeg-core.wasm'});
+    await engine.writeFile('input',new Uint8Array(await blob.arrayBuffer()));
+    for(const [kind,options] of [['gif',{}],['webp',{}],['trim',{start:0.5,end:1.5,format:'mp4'}],['split',{seconds:2,format:'mp4'}]]){
+      result.textContent='출력 검사 중: '+kind;
+      const spec=HanbiRecorderLogic.conversionSpec(kind,options);
+      const code=await engine.exec([...(spec.preInput||[]),'-i','input',...spec.args,spec.output]);
+      if(code)throw new Error(kind+' 변환 실패 '+code);
+      const files=(await engine.listDir('.')).filter(e=>spec.split?/^output-\d+\.mp4$/.test(e.name):e.name===spec.output);
+      if(!files.length)throw new Error(kind+' 출력 없음');
+      for(const file of files){
+        const bytes=await engine.readFile(file.name);
+        let playbackCheck;
+        if(['gif','webp'].includes(kind)){
+          const image=document.querySelector('#image-preview'),url=URL.createObjectURL(new Blob([bytes],{type:spec.mime}));
+          image.src=url;
+          await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error(file.name+' 이미지 로딩 실패'));});
+          playbackCheck={decoder:'browser-image',width:image.naturalWidth,height:image.naturalHeight};
+          URL.revokeObjectURL(url);
+        }else{
+          const decoded=await engine.exec(['-i',file.name,'-f','null','-']);
+          if(decoded)throw new Error(file.name+' 디코딩 실패');
+          playbackCheck={decoder:'ffmpeg',exitCode:decoded};
+        }
+        formats.checks.push({kind,file:file.name,bytes:bytes.length,...playbackCheck});
+        await engine.deleteFile(file.name);
+      }
+    }
+    formats.done=true;
+  }catch(error){formats.error=error.message;}finally{engine.terminate();result.textContent=JSON.stringify(formats,null,2);button.disabled=run.disabled=false;}
+};
+</script></html>

@@ -4,6 +4,9 @@
   const compatibleMp4 = [
     "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
     "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+    // MediaRecorder WebM can advertise a 1/1000 time base as its frame rate.
+    // Keep captured timestamps instead of duplicating frames to 1000 fps.
+    "-fps_mode", "vfr",
     "-movflags", "+faststart",
   ];
 
@@ -49,7 +52,16 @@
     }
   }
 
-  const api = { conversionSpec };
+  function isCompatibleMp4(mimeType) {
+    const match = /^video\/mp4\s*;\s*codecs\s*=\s*"?([^";]+)"?\s*$/i.exec(mimeType || "");
+    if (!match) return false;
+    const codecs = match[1].split(",").map(codec => codec.trim().toLowerCase());
+    return codecs.length >= 1 && codecs.length <= 2
+      && /^avc1(?:\.[0-9a-f]{6})?$/.test(codecs[0])
+      && (codecs.length === 1 || codecs[1] === "mp4a.40.2");
+  }
+
+  const api = { conversionSpec, isCompatibleMp4 };
   if (typeof module !== "undefined") module.exports = api;
   else root.HanbiRecorderLogic = api;
 })(globalThis);

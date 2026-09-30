@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "kind": "gif",
+      "file": "output.gif",
+      "bytes": 3295638,
+      "decoder": "browser-image",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "kind": "webp",
+      "file": "output.webp",
+      "bytes": 713398,
+      "decoder": "browser-image",
+      "width": 640,
+      "height": 360
+    },
+    {
+      "kind": "trim",
+      "file": "output-trim.mp4",
+      "bytes": 759803,
+      "decoder": "ffmpeg",
+      "exitCode": 0
+    },
+    {
+      "kind": "split",
+      "file": "output-000.mp4",
+      "bytes": 1530879,
+      "decoder": "ffmpeg",
+      "exitCode": 0
+    },
+    {
+      "kind": "split",
+      "file": "output-001.mp4",
+      "bytes": 1594940,
+      "decoder": "ffmpeg",
+      "exitCode": 0
+    },
+    {
+      "kind": "split",
+      "file": "output-002.mp4",
+      "bytes": 66751,
+      "decoder": "ffmpeg",
+      "exitCode": 0
+    }
+  ],
+  "done": true
+}

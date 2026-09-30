@@ -1,13 +1,35 @@
 (() => {
   "use strict";
 
-  function chooseRecorderMime(Recorder) {
-    if (typeof Recorder?.isTypeSupported !== "function") return "";
+  function supportedRecorderMimes(Recorder) {
+    if (typeof Recorder?.isTypeSupported !== "function") return [];
     return [
+      "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
       "video/webm;codecs=vp9,opus",
       "video/webm;codecs=vp8,opus",
       "video/webm",
-    ].find((type) => Recorder.isTypeSupported(type)) || "";
+    ].filter((type) => Recorder.isTypeSupported(type));
+  }
+
+  function chooseRecorderMime(Recorder) {
+    return supportedRecorderMimes(Recorder)[0] || "";
+  }
+
+  function startRecordingRecorder(Recorder, stream, options, attach) {
+    let lastError;
+    for (const mimeType of [...supportedRecorderMimes(Recorder), ""]) {
+      let detach;
+      try {
+        const recorder = new Recorder(stream, { ...options, ...(mimeType ? { mimeType } : {}) });
+        detach = attach(recorder);
+        recorder.start(1000);
+        return recorder;
+      } catch (error) {
+        detach?.();
+        lastError = error;
+      }
+    }
+    throw lastError;
   }
 
   function recordingVideoBitrate(source) {
@@ -108,7 +130,7 @@
   const trendThumbnail = (live) => (live.liveImageUrl || live.thumbnailImageUrl || live.defaultThumbnailImageUrl || "").replaceAll("{type}", "720");
   const actualQualityHeight = (media) => media?.readyState >= 2 && !media.error && Number.isFinite(media.videoHeight) && media.videoHeight > 0 ? media.videoHeight : null;
 
-  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
+  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, startRecordingRecorder, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
   if (typeof document === "undefined") return;
   if (globalThis.__HANBI_CHZZK_TOOLS__) return;
   globalThis.__HANBI_CHZZK_TOOLS__ = true;
@@ -437,13 +459,14 @@
     const blob = new Blob(session.chunks, { type });
     resetRecording(session);
     status("녹화 결과 창을 여는 중…");
-    const name = fileName("webm").replace(/\.webm$/, "");
+    const ext = type.includes("mp4") ? "mp4" : "webm";
+    const name = fileName(ext).replace(/\.(?:mp4|webm)$/, "");
     try {
       await HanbiRecordingTransport.save(api, { blob, fileName: name, mimeType: type, startedAt: session.startedAt, stoppedAt: Date.now() });
       status("녹화 결과 창을 열었습니다.");
     } catch (error) {
       const url = URL.createObjectURL(blob);
-      download(url, `${name}.webm`);
+      download(url, `${name}.${ext}`);
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
       status("결과 창을 열지 못해 원본을 대신 저장했습니다.", true);
       console.error("[CHZZK All-in-One recorder]", error);
@@ -471,38 +494,47 @@
       }
       return;
     }
-    if (typeof MediaRecorder === "undefined") throw new Error("이 Firefox는 녹화를 지원하지 않습니다.");
+    if (typeof MediaRecorder === "undefined") throw new Error("이 브라우저는 녹화를 지원하지 않습니다.");
 
     const source = video();
     if (!source) throw new Error("재생 중인 영상을 찾지 못했습니다.");
     const { stream, shared } = acquireCapture(source);
 
-    const mimeType = chooseRecorderMime(MediaRecorder);
+    let session;
     let recorder;
     try {
-      recorder = new MediaRecorder(stream, {
-        ...(mimeType ? { mimeType } : {}),
+      recorder = startRecordingRecorder(MediaRecorder, stream, {
         videoBitsPerSecond: recordingVideoBitrate(source),
         audioBitsPerSecond: 192_000,
+      }, (candidate) => {
+        session = {
+          recorder: candidate, stream, source, channelPath: location.pathname, button: buttonElement, chunks: [], startedAt: Date.now(),
+          sharedCapture: shared, audioCleanup: null,
+        };
+        recording = session;
+        const current = session;
+        const onData = (event) => event.data.size && current.chunks.push(event.data);
+        const onStop = () => finishRecording(current).catch((error) => {
+          resetRecording(current);
+          status(error?.message || "녹화 결과 창을 열지 못했습니다.", true);
+        });
+        const onError = (event) => {
+          current.failed = true;
+          resetRecording(current);
+          status(event.error?.message || "녹화에 실패했습니다.", true);
+        };
+        candidate.addEventListener("dataavailable", onData);
+        candidate.addEventListener("stop", onStop, { once: true });
+        candidate.addEventListener("error", onError, { once: true });
+        return () => {
+          candidate.removeEventListener("dataavailable", onData);
+          candidate.removeEventListener("stop", onStop);
+          candidate.removeEventListener("error", onError);
+          recording = null;
+        };
       });
     }
     catch (error) { if (!shared) stream.getTracks().forEach(track => track.stop()); throw error; }
-    const session = {
-      recorder, stream, source, channelPath: location.pathname, button: buttonElement, chunks: [], startedAt: Date.now(),
-      sharedCapture: shared, audioCleanup: null,
-    };
-    recording = session;
-    recorder.addEventListener("dataavailable", (event) => event.data.size && session.chunks.push(event.data));
-    recorder.addEventListener("stop", () => finishRecording(session).catch((error) => {
-      resetRecording(session);
-      status(error?.message || "녹화 결과 창을 열지 못했습니다.", true);
-    }), { once: true });
-    recorder.addEventListener("error", (event) => {
-      resetRecording(session);
-      status(event.error?.message || "녹화에 실패했습니다.", true);
-    }, { once: true });
-    try { recorder.start(1000); }
-    catch (error) { session.failed = true; resetRecording(session); throw error; }
     const stop = () => { if (recorder.state !== 'inactive') recorder.stop(); };
     source.addEventListener('emptied', stop);
     source.addEventListener('ended', stop);

@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-30",
+  "sourceBefore": "1.1.19",
+  "sourcePrepared": "1.1.20",
+  "installedVersionRead": false,
+  "loginConfirmed": true,
+  "power": {
+    "channel": "/live/c7d3b49d29be2d2b1d74ba8403f5851a",
+    "observedBalances": [
+      330,
+      350,
+      360,
+      370
+    ],
+    "saveLogMessages": [
+      "08:30:11.204Z",
+      "08:35:11.206Z",
+      "08:40:11.199Z",
+      "08:45:11.213Z"
+    ],
+    "claimPutNotObserved": true,
+    "logsPageNotRead": true,
+    "hourlyClaimNotVerified": true
+  },
+  "followingPreview": {
+    "width": 640,
+    "height": 360,
+    "muted": true,
+    "paused": false,
+    "firstTime": 19.616407,
+    "nextTime": 48.231161,
+    "closedHidden": true,
+    "closedPaused": true
+  },
+  "followingStartNotification": "not triggered",
+  "browserErrorsObserved": 0,
+  "userConfirmedUpdate": true,
+  "actualRecording": {
+    "resultTabsCreated": 2,
+    "recordStartObservedMuted": true,
+    "userConfirmed": {
+      "durationSeconds": 23.5,
+      "sizeMB": 65.5,
+      "mime": "video/mp4;codecs=avc1.420028,mp4a.40.2",
+      "mp4SaveImmediate": true,
+      "audibleBroadcastAudio": true
+    },
+    "resultContentsReadByConnector": false
+  }
+}

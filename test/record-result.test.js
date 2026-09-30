@@ -1,6 +1,21 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { conversionSpec } = require("../record-result-logic.js");
+const { conversionSpec, isCompatibleMp4 } = require("../record-result-logic.js");
+
+test("MP4 인코딩·자르기·분할은 WebM의 1000fps 프레임 복제를 막는다", () => {
+  for (const spec of [conversionSpec("mp4"), conversionSpec("trim", { start: 0, end: 1 }), conversionSpec("split", { seconds: 1 })]) {
+    const index = spec.args.indexOf("-fps_mode");
+    assert.ok(index >= 0);
+    assert.equal(spec.args[index + 1], "vfr");
+    assert.ok(!spec.args.includes("-r"));
+    assert.ok(!spec.args.includes("scale"));
+  }
+});
+
+test("MP4 직접 저장은 AVC/AAC가 확인된 MIME만 허용한다", () => {
+  for (const mime of ['video/mp4;codecs=avc1.420028,mp4a.40.2', 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"', 'video/mp4;codecs=avc1.420028']) assert.equal(isCompatibleMp4(mime), true);
+  for (const mime of [undefined, 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/mp4;codecs=hvc1,mp4a.40.2', 'video/mp4;codecs=avc1.420028,opus', 'video/mp4;codecs=avc1.420028,mp4a.40.2,opus']) assert.equal(isCompatibleMp4(mime), false);
+});
 
 test("MP4는 호환 인코딩 경로 하나를 사용하고 기존 형식을 유지한다", () => {
   assert.ok(conversionSpec("mp4").args.includes("libx264"));

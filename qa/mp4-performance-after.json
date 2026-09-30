@@ -1,0 +1,80 @@
+{
+  "types": {
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2": true,
+    "video/mp4;codecs=avc1,mp4a.40.2": true,
+    "video/webm;codecs=vp8,opus": true
+  },
+  "recordings": [
+    {
+      "mime": "video/webm;codecs=vp8,opus",
+      "bytes": 4877595,
+      "playback": {
+        "width": 1920,
+        "height": 1080,
+        "duration": null
+      }
+    },
+    {
+      "mime": "video/mp4;codecs=avc1.420028,mp4a.40.2",
+      "bytes": 8771886,
+      "playback": {
+        "width": 1920,
+        "height": 1080,
+        "duration": 4.000233
+      }
+    }
+  ],
+  "loadMs": 111.60000000149012,
+  "conversions": [
+    {
+      "inputMime": "video/webm;codecs=vp8,opus",
+      "mode": "encode",
+      "writeMs": 4.5,
+      "encodeMs": 11811.300000000745,
+      "readMs": 2.5,
+      "bytes": 5592021,
+      "playback": {
+        "width": 1920,
+        "height": 1080,
+        "duration": 3.98
+      },
+      "decoded": 0,
+      "streams": [
+        "  Stream #0:0[0x1](eng): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(tv, bt470bg/unknown/unknown, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 11100 kb/s, 56.72 fps, 1k tbr, 16k tbn (default)",
+        "  Stream #0:1[0x2](eng): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 159 kb/s (default)",
+        "  Stream #0:0(eng): Video: wrapped_avframe, yuv420p(tv, bt470bg/unknown/unknown, progressive), 1920x1080 [SAR 1:1 DAR 16:9], q=2-31, 200 kb/s, 56.72 fps, 56.72 tbn (default)",
+        "  Stream #0:1(eng): Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)"
+      ]
+    },
+    {
+      "inputMime": "video/mp4;codecs=avc1.420028,mp4a.40.2",
+      "mode": "copy",
+      "writeMs": 6.800000000745058,
+      "encodeMs": 74.19999999925494,
+      "readMs": 2,
+      "bytes": 8774958,
+      "playback": {
+        "width": 1920,
+        "height": 1080,
+        "duration": 4.000267
+      },
+      "decoded": 0,
+      "streams": [
+        "  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(tv, smpte170m, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 17342 kb/s, 58.50 fps, 30 tbr, 30k tbn (default)",
+        "  Stream #0:1[0x2](und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 192 kb/s (default)",
+        "  Stream #0:0(und): Video: wrapped_avframe, yuv420p(tv, smpte170m, progressive), 1920x1080 [SAR 1:1 DAR 16:9], q=2-31, 200 kb/s, 30 fps, 30 tbn (default)",
+        "  Stream #0:1(und): Audio: pcm_s16le, 44100 Hz, stereo, s16, 1411 kb/s (default)"
+      ]
+    }
+  ],
+  "nativeDirect": {
+    "prepareMs": 0,
+    "bytes": 8771886,
+    "playback": {
+      "width": 1920,
+      "height": 1080,
+      "duration": 4.000233
+    }
+  },
+  "done": true
+}

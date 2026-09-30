@@ -1,5 +1,40 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { startRecordingRecorder } = require("../tools.js");
+
+test("MP4 생성·시작 실패 때 동일한 캡처를 WebM으로 재사용하고 리스너를 정리한다", () => {
+  for (const phase of ["constructor", "start"]) {
+    const attempts = [], attached = [], detached = [];
+    const stream = {};
+    class Recorder {
+      static isTypeSupported(type) { return type.includes("avc1") || type.includes("vp8"); }
+      constructor(input, options) {
+        assert.equal(input, stream);
+        this.mimeType = options.mimeType;
+        attempts.push(this.mimeType);
+        assert.equal(options.videoBitsPerSecond, 12_000_000);
+        if (phase === "constructor" && this.mimeType.includes("avc1")) throw new Error("unavailable");
+      }
+      start(interval) {
+        assert.equal(interval, 1000);
+        if (phase === "start" && this.mimeType.includes("avc1")) throw new Error("unavailable");
+      }
+    }
+    const recorder = startRecordingRecorder(Recorder, stream, { videoBitsPerSecond: 12_000_000 }, candidate => {
+      attached.push(candidate.mimeType);
+      return () => detached.push(candidate.mimeType);
+    });
+    assert.equal(recorder.mimeType, "video/webm;codecs=vp8,opus");
+    assert.equal(attempts.length, 2);
+    assert.equal(attached.length, phase === "start" ? 2 : 1);
+    assert.equal(detached.length, phase === "start" ? 1 : 0);
+  }
+});
+
+test("H264/AAC 녹화를 지원하면 MP4를 먼저 선택한다", () => {
+  const { chooseRecorderMime } = require("../tools.js");
+  assert.equal(chooseRecorderMime({ isTypeSupported: () => true }), "video/mp4;codecs=avc1.42E01E,mp4a.40.2");
+});
 const { chooseRecorderMime, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight } = require("../tools.js");
 
 test("화질 표시는 선택 메뉴가 아닌 실제 디코딩된 영상 높이를 쓴다", () => {

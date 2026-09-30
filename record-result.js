@@ -1,7 +1,7 @@
 import { FFmpeg } from "./vendor/ffmpeg/wrapper/index.js";
 
 const api = globalThis.browser ?? globalThis.chrome;
-const { conversionSpec } = globalThis.HanbiRecorderLogic;
+const { conversionSpec, isCompatibleMp4 } = globalThis.HanbiRecorderLogic;
 const video = document.getElementById("result-video");
 const status = document.getElementById("status");
 const progressWrap = document.getElementById("progress-wrap");
@@ -62,7 +62,7 @@ async function loadFFmpeg() {
 
 async function cleanWorkspace(engine) {
   for (const entry of await engine.listDir(".")) {
-    if (entry.name === "input.webm" || entry.name.startsWith("output")) {
+    if (["input.webm", "input.mp4"].includes(entry.name) || entry.name.startsWith("output")) {
       await engine.deleteFile(entry.name).catch(() => {});
     }
   }
@@ -77,15 +77,22 @@ async function convert(kind, options) {
   let ticker = null;
   try {
     const spec = conversionSpec(kind, options);
+    if (kind === "mp4" && isCompatibleMp4(recording.mimeType)) {
+      const fileName = `${safeName(recording.fileName)}.mp4`;
+      await download(recordingUrl, fileName);
+      setStatus(`MP4 원본을 재인코딩 없이 저장했습니다. 다운로드 폴더의 "${fileName}" 파일입니다.`);
+      return;
+    }
     const engine = await loadFFmpeg();
     await cleanWorkspace(engine);
     setStatus("브라우저에서 변환 중입니다. 이 탭을 닫지 마세요. 긴 영상은 수 분 이상 걸릴 수 있습니다.");
-    await engine.writeFile("input.webm", new Uint8Array(await recording.blob.arrayBuffer()));
+    const inputName = recording.mimeType.includes("mp4") ? "input.mp4" : "input.webm";
+    await engine.writeFile(inputName, new Uint8Array(await recording.blob.arrayBuffer()));
     const startedAt = Date.now();
     ticker = setInterval(() => {
       if (!percentKnown) progressText.textContent = `인코딩 중 · ${Math.round((Date.now() - startedAt) / 1000)}초 경과`;
     }, 1000);
-    const command = current => [...(current.preInput || []), "-i", "input.webm", ...current.args, current.output];
+    const command = current => [...(current.preInput || []), "-i", inputName, ...current.args, current.output];
     if (spec.split === "chunks") {
       if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("영상 길이를 확인할 수 없어 분할하지 못했습니다.");
       for (let index = 0, start = 0; start < video.duration; index++, start += spec.seconds) {
