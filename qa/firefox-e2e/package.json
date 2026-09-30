@@ -1,0 +1,14 @@
+{
+  "name": "chzzk-firefox-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Firefox E2E QA harness for CHZZK All-in-One. Separate from production code.",
+  "scripts": {
+    "e2e": "node e2e-core4.cjs",
+    "perf": "node perf-run.cjs"
+  },
+  "devDependencies": {
+    "geckodriver": "^1.20.1",
+    "selenium-webdriver": "^4.27.0"
+  }
+}

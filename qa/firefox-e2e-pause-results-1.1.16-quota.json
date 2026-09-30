@@ -1,0 +1,289 @@
+{
+  "scenarios": [
+    {
+      "name": "PAUSE: video pauses via keyboard",
+      "pass": true,
+      "detail": {
+        "be": 50.00002,
+        "bs": 26.034833,
+        "ct": 34.422112,
+        "errors": [],
+        "h": 1080,
+        "hls": {
+          "buffering": true,
+          "loading": true,
+          "maxBufferLength": 3600,
+          "maxMaxBufferLength": 3600,
+          "state": "IDLE"
+        },
+        "paused": true,
+        "rs": 4
+      }
+    },
+    {
+      "name": "PAUSE-BUFFER: currentTime frozen while buffered.end advances (no TM panel)",
+      "pass": true,
+      "detail": {
+        "pausePoint": {
+          "be": 50.00002,
+          "bs": 26.034833,
+          "ct": 34.422112,
+          "errors": [],
+          "h": 1080,
+          "hls": {
+            "buffering": true,
+            "loading": true,
+            "maxBufferLength": 3600,
+            "maxMaxBufferLength": 3600,
+            "state": "IDLE"
+          },
+          "paused": true,
+          "rs": 4
+        },
+        "first": {
+          "t": 15004,
+          "be": 63.994666,
+          "bs": 34.034833,
+          "ct": 34.422112,
+          "errors": [],
+          "h": 1080,
+          "hls": {
+            "buffering": true,
+            "loading": true,
+            "maxBufferLength": 3600,
+            "maxMaxBufferLength": 3600,
+            "state": "IDLE"
+          },
+          "paused": true,
+          "rs": 4
+        },
+        "last": {
+          "t": 180138,
+          "be": 182.266666,
+          "bs": 34.034833,
+          "ct": 34.422112,
+          "errors": [
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            }
+          ],
+          "h": 1080,
+          "hls": {
+            "buffering": true,
+            "loading": true,
+            "maxBufferLength": 3600,
+            "maxMaxBufferLength": 145.844554,
+            "state": "IDLE"
+          },
+          "paused": true,
+          "rs": 4
+        },
+        "samples": [
+          {
+            "t": 15004,
+            "be": 63.994666,
+            "bs": 34.034833,
+            "ct": 34.422112,
+            "errors": [],
+            "h": 1080,
+            "hls": {
+              "buffering": true,
+              "loading": true,
+              "maxBufferLength": 3600,
+              "maxMaxBufferLength": 3600,
+              "state": "IDLE"
+            },
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 75054,
+            "be": 124.282666,
+            "bs": 34.034833,
+            "ct": 34.422112,
+            "errors": [],
+            "h": 1080,
+            "hls": {
+              "buffering": true,
+              "loading": true,
+              "maxBufferLength": 3600,
+              "maxMaxBufferLength": 3600,
+              "state": "IDLE"
+            },
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 135097,
+            "be": 182.266666,
+            "bs": 34.034833,
+            "ct": 34.422112,
+            "errors": [
+              {
+                "at": 34.422112,
+                "details": "bufferFullError",
+                "fatal": false,
+                "name": "QuotaExceededError"
+              },
+              {
+                "at": 34.422112,
+                "details": "bufferFullError",
+                "fatal": false,
+                "name": "QuotaExceededError"
+              },
+              {
+                "at": 34.422112,
+                "details": "bufferFullError",
+                "fatal": false,
+                "name": "QuotaExceededError"
+              },
+              {
+                "at": 34.422112,
+                "details": "bufferFullError",
+                "fatal": false,
+                "name": "QuotaExceededError"
+              },
+              {
+                "at": 34.422112,
+                "details": "bufferFullError",
+                "fatal": false,
+                "name": "QuotaExceededError"
+              }
+            ],
+            "h": 1080,
+            "hls": {
+              "buffering": true,
+              "loading": true,
+              "maxBufferLength": 3600,
+              "maxMaxBufferLength": 145.844554,
+              "state": "IDLE"
+            },
+            "paused": true,
+            "rs": 4
+          }
+        ],
+        "ctStable": true,
+        "beAdvanced": true
+      }
+    },
+    {
+      "name": "PAUSE-RESUME: playback resumes from the paused point",
+      "pass": true,
+      "detail": {
+        "pausePoint": {
+          "be": 50.00002,
+          "bs": 26.034833,
+          "ct": 34.422112,
+          "errors": [],
+          "h": 1080,
+          "hls": {
+            "buffering": true,
+            "loading": true,
+            "maxBufferLength": 3600,
+            "maxMaxBufferLength": 3600,
+            "state": "IDLE"
+          },
+          "paused": true,
+          "rs": 4
+        },
+        "resumed": {
+          "be": 182.266666,
+          "bs": 36.048,
+          "ct": 36.752382,
+          "errors": [
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 34.422112,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            },
+            {
+              "at": 36.627382,
+              "details": "bufferFullError",
+              "fatal": false,
+              "name": "QuotaExceededError"
+            }
+          ],
+          "h": 1080,
+          "hls": {
+            "buffering": true,
+            "loading": true,
+            "maxBufferLength": 330,
+            "maxMaxBufferLength": 143.63928399999998,
+            "state": "IDLE"
+          },
+          "paused": false,
+          "rs": 4
+        },
+        "resumedFromPause": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "environment": {
+    "version": "1.1.16",
+    "browserVersion": "156.0.1",
+    "pauseMs": 180000,
+    "headless": true
+  },
+  "summary": {
+    "finishedAt": "2026-09-28T16:08:44.491Z",
+    "pass": true
+  },
+  "assessment": {
+    "sustainedBuffering": false,
+    "resumeFromPause": true,
+    "reason": "bufferFullError / QuotaExceededError; final 45 seconds show no buffered.end advance. Original average-only PASS retained as historical output."
+  }
+}

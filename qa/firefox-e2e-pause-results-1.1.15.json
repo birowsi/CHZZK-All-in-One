@@ -1,0 +1,89 @@
+{
+  "scenarios": [
+    {
+      "name": "PAUSE: video pauses via keyboard",
+      "pass": true,
+      "detail": {
+        "be": 50,
+        "bs": 28.0525,
+        "ct": 36.165816,
+        "h": 1080,
+        "paused": true,
+        "rs": 4
+      }
+    },
+    {
+      "name": "PAUSE-BUFFER: currentTime frozen while buffered.end advances (no TM panel)",
+      "pass": true,
+      "detail": {
+        "pausePoint": {
+          "be": 50,
+          "bs": 28.0525,
+          "ct": 36.165816,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "first": {
+          "t": 15018,
+          "be": 66,
+          "bs": 36.0525,
+          "ct": 36.165816,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "last": {
+          "t": 60052,
+          "be": 110.010687,
+          "bs": 36.0525,
+          "ct": 36.165816,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "samples": [
+          {
+            "t": 15018,
+            "be": 66,
+            "bs": 36.0525,
+            "ct": 36.165816,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          }
+        ],
+        "ctStable": true,
+        "beAdvanced": true
+      }
+    },
+    {
+      "name": "PAUSE-RESUME: playback resumes from the paused point",
+      "pass": true,
+      "detail": {
+        "pausePoint": {
+          "be": 50,
+          "bs": 28.0525,
+          "ct": 36.165816,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "resumed": {
+          "be": 112.016,
+          "bs": 36.0525,
+          "ct": 38.525607,
+          "h": 1080,
+          "paused": false,
+          "rs": 4
+        },
+        "resumedFromPause": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "summary": {
+    "finishedAt": "2026-09-28T15:57:15.614Z",
+    "pass": true
+  }
+}

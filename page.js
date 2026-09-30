@@ -103,10 +103,13 @@
     }
     return false;
   }
-  // {" 로 시작하는 JSON 바이트 뷰만 검사해 광고 응답이면 교체된 바이트를 반환한다.
+  // JSON 객체 후보만 디코딩한다. UTF-8 BOM과 JSON 공백은 허용한다.
   function neutralizeAdBuffer(view) {
     if (!OrigUint8Array || !jsonByteDecoder || !jsonByteEncoder) return null;
-    if (!view || view.length < 2 || view[0] !== 0x7b || view[1] !== 0x22) return null;
+    if (!view || view.length < 2) return null;
+    let start = view[0] === 0xef && view[1] === 0xbb && view[2] === 0xbf ? 3 : 0;
+    while (view[start] === 0x20 || view[start] === 0x09 || view[start] === 0x0a || view[start] === 0x0d) start++;
+    if (view[start] !== 0x7b) return null;
     let data;
     try { data = JSON.parse(jsonByteDecoder.decode(view)); } catch (_) { return null; }
     if (!neutralizeAds(data)) return null;
@@ -193,26 +196,31 @@
             try { contentType = typeof this.getResponseHeader === "function" ? this.getResponseHeader("content-type") || "" : ""; } catch (_) {}
             if (!/json/i.test(String(contentType))) return value;
           }
-          if (typeof value === "string") return transformText(value, playlist, gridEnabled, live);
-          if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+          const meta = requests.get(this);
+          const cached = meta?.cache;
+          if (cached && cached.value === value && cached.grid === gridEnabled && cached.url === url) return cached.result;
+          let result = value;
+          if (typeof value === "string") result = transformText(value, playlist, gridEnabled, live);
+          else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
             try {
               const patched = neutralizeAdBuffer(ArrayBuffer.isView(value)
                 ? new OrigUint8Array(value.buffer, value.byteOffset, value.byteLength)
                 : new OrigUint8Array(value));
               // responseType='arraybuffer'는 ArrayBuffer 그대로, 나머지는 바이트 뷰를 반환한다.
-              if (patched) return value instanceof ArrayBuffer ? patched.buffer.slice(0, patched.byteLength) : patched;
+              if (patched) result = value instanceof ArrayBuffer ? patched.buffer.slice(0, patched.byteLength) : patched;
             } catch (_) {}
-            return value;
           }
-          if (value && typeof value === "object") {
+          else if (value && typeof value === "object") {
             try {
               const copy = structuredClone(value);
-              neutralizeAds(copy);
-              if (live) patchPayload(copy, new WeakSet(), gridEnabled);
-              return copy;
-            } catch (_) { return value; }
+              let changed = neutralizeAds(copy);
+              if (live && patchPayload(copy, new WeakSet(), gridEnabled)) changed = true;
+              if (changed) result = copy;
+            } catch (_) {}
           }
-          return value;
+          // open() resets this request's cache; native getters still run first to preserve exceptions.
+          if (meta) meta.cache = { value, result, grid: gridEnabled, url };
+          return result;
         } });
       }
     }
@@ -221,18 +229,16 @@
       try {
         target.Uint8Array = new Proxy(target.Uint8Array, {
           construct(source, args, NewTarget) {
+            // Native construction validates offsets and converts typed-array elements first.
+            const result = Reflect.construct(source, args, NewTarget);
             const input = args[0];
-            if (args.length && input && typeof input === "object") {
+            if (input instanceof ArrayBuffer || (ArrayBuffer.isView(input) && !(input instanceof DataView))) {
               try {
-                const view = input instanceof ArrayBuffer ? new OrigUint8Array(input, args[1] || 0, args[2])
-                  : ArrayBuffer.isView(input) && !(input instanceof DataView)
-                    ? new OrigUint8Array(input.buffer, input.byteOffset, input.byteLength)
-                    : null;
-                const patched = view ? neutralizeAdBuffer(view) : null;
+                const patched = neutralizeAdBuffer(result);
                 if (patched) return Reflect.construct(source, [patched], NewTarget);
               } catch (_) {}
             }
-            return Reflect.construct(source, args, NewTarget);
+            return result;
           },
         });
       } catch (_) {}

@@ -42,6 +42,48 @@ function powerProbe(logs = [], enabled = true) {
   return { observed, button, globals, run: func('content.js', 'clickPowerButtonIfExists', globals) };
 }
 async function main() {
+  await check('POWER-CLAIM-RESULT: skip/failure do not confirm a grant; a successful claim ID is not sent twice', async () => {
+    let puts = 0, ok = false;
+    const globals = { powerAcquisitionEnabled: true, pendingClaims: new Set(), completedClaims: new Set(), console: quiet,
+      fetch: async () => { puts++; return { ok, status: 503, json: async () => ({ code: 200, content: { amount: 100 } }) }; },
+      savePowerLog: async () => true };
+    const claim = func('content.js', 'claimPower', globals);
+    const reward = { claimId: 'reward', claimType: 'FOLLOW', amount: 100 };
+    assert.equal(await claim('a', reward), false);
+    assert.equal(globals.pendingClaims.size, 0);
+    ok = true;
+    assert.equal(await claim('a', reward), true);
+    assert.equal(await claim('a', reward), false);
+    assert.equal(puts, 2);
+    globals.powerAcquisitionEnabled = false;
+    assert.equal(await claim('a', { ...reward, claimId: 'off' }), false);
+    globals.powerAcquisitionEnabled = true;
+    assert.equal(await claim('a', { ...reward, claimId: 'view', claimType: 'WATCH_1_HOUR' }), false);
+    assert.equal(puts, 2);
+  });
+  await check('POWER-POLL-RETRY: unclaimed items alone must not create a one-second query loop', async () => {
+    for (const active of [true, false]) {
+      const timers = [], badges = [];
+      let awarded = false, channel = 'a';
+      const ctx = vm.createContext({ console: quiet, isLivePage: () => true, getChannelIdFromUrl: () => channel,
+        fetch: async () => ({ ok: true, json: async () => ({ content: { amount: 100, claims: [{ claimId: 'a' }], active } }) }),
+        recordPowerBalance: async () => {}, claimPower: async () => awarded,
+        updatePowerCountBadge: (...args) => badges.push(args), isChannelInactive: false,
+        powerBadgeDomPoller: null, startPowerBadgeDomPoller() {},
+        setTimeout: fn => timers.push(fn), setInterval() {}, clearInterval() {},
+      });
+      vm.runInContext(extract('content.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'fetchAndUpdatePowerAmount'), ctx);
+      await ctx.fetchAndUpdatePowerAmount();
+      assert.equal(timers.length, 0, 'skip or rejected grant should wait for the existing 30-second poll');
+      awarded = true;
+      await ctx.fetchAndUpdatePowerAmount();
+      assert.equal(timers.length, 1, 'confirmed grant gets one immediate refresh');
+      let reads = 0;
+      ctx.fetchAndUpdatePowerAmount = () => { reads++; };
+      channel = 'b'; timers[0]();
+      assert.equal(reads, 0, 'old channel callback must not query a new channel');
+    }
+  });
   await check('POWER-OFF: disabled acquisition must not click claim', async () => {
     const probe = powerProbe([], false); await probe.run(); assert.equal(probe.observed.clicks, 0);
   });
@@ -65,6 +107,7 @@ async function main() {
       console: quiet, isLivePage: () => true, getChannelIdFromUrl: () => channelId,
       fetch: async () => ({ ok: true, json: async () => ({ content: { amount: 100, claims: [], active } }) }),
       updatePowerCountBadge: (...args) => updates.push(args),
+      recordPowerBalance: async () => {},
       setInterval: () => 9, clearInterval: id => cleared.push(id),
       powerBadgeDomPoller: 1, powerCountInterval: 2, isChannelInactive: false,
       startPowerBadgeDomPoller: () => { restarts++; ctx.powerBadgeDomPoller = 3; },
@@ -130,6 +173,41 @@ async function main() {
     });
     await Promise.all([save('a', 100, 'view'), save('b', 100, 'view')]);
     assert.equal(stored.length, 2);
+  });
+  await check('POWER-BALANCE-LOG: only an unexplained increase creates a fallback entry', async () => {
+    const saved = [];
+    let powerLogs = [];
+    const ctx = vm.createContext({
+      Date, Number, console: quiet, powerAcquisitionEnabled: true,
+      cachedPowerAmount: null, cachedPowerChannelId: null, cachedPowerObservedAt: 0,
+      chrome: { storage: { local: { get: async () => ({ powerLogs }) } } },
+      savePowerLog: async (...args) => { saved.push(args); return true; },
+    });
+    vm.runInContext(extract('content.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'recordPowerBalance'), ctx);
+    await ctx.recordPowerBalance('a', 100);
+    assert.equal(saved.length, 0);
+    await ctx.recordPowerBalance('a', 200);
+    assert.deepEqual(Array.from(saved[0].slice(0, 3)), ['a', 100, 'OTHERS']);
+    powerLogs = [{ channelId: 'a', amount: 50, timestamp: new Date().toISOString() }];
+    await ctx.recordPowerBalance('a', 300);
+    assert.equal(saved[1][1], 50);
+    await ctx.recordPowerBalance('b', 800);
+    assert.equal(saved.length, 2);
+    await ctx.recordPowerBalance('b', 700);
+    assert.equal(saved.length, 2);
+    await ctx.recordPowerBalance('b', 900, false);
+    assert.equal(saved.length, 2);
+  });
+  await check('CHAT-FONT: current and legacy chat message selectors are both styled', () => {
+    const style = { textContent: '' };
+    const apply = func('tools.js', 'applyChatFeatures', {
+      document: { getElementById: () => style },
+      features: { hideDonation: false, chatFontSizeEnabled: true }, trendOptions: { chatFontSize: 20 },
+    });
+    apply();
+    assert.match(style.textContent, /aside#aside-chatting \[role='log'\] \[class\*='_chatting_message_'\] > \[class\*='_text_'\]/);
+    assert.match(style.textContent, /live_chatting_message_text/);
+    assert.match(style.textContent, /font-size: 20px !important/);
   });
   const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
   const api = {
@@ -293,6 +371,23 @@ async function audioMain() {
     source.muted = true; listeners.get('volumechange')(); assert.equal(gain.gain.value, 0);
     source.muted = false; listeners.get('volumechange')(); assert.equal(gain.gain.value, 0.25);
     cleanup(); assert.equal(listeners.size, 0); assert.equal(input.outputs.length, 0); assert.equal(gain.outputs.length, 0); assert.equal(p.contexts[0].closes, 1);
+  });
+  await check('AUDIO-MUTED-REC: player mute does not remove captured audio', () => {
+    const audio = { enabled: true }, video = { enabled: true };
+    const stream = { getAudioTracks: () => [audio], getVideoTracks: () => [video], getTracks: () => [audio, video] };
+    const source = { muted: true, volume: 0, mozCaptureStream: () => stream };
+    let monitored = false;
+    const ctx = vm.createContext({
+      sharedCapture: null,
+      captureReusePlan: require(path.join(repo, 'tools.js')).captureReusePlan,
+      monitorFirefoxAudio(media, captured) { monitored = media === source && captured === stream; return () => {}; },
+    });
+    vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'acquireCapture'), ctx);
+    const result = ctx.acquireCapture(source);
+    assert.equal(result.stream, stream);
+    assert.equal(stream.getAudioTracks()[0].enabled, true);
+    assert.equal(source.muted, true);
+    assert.equal(monitored, true);
   });
   await check('AUDIO-MONITOR-COMP: captured audio follows COMP toggle', () => {
     const p = audioProbe(), source = { muted: false, volume: 1, addEventListener() {}, removeEventListener() {} };
@@ -550,8 +645,8 @@ async function uiMain() {
     let root = null;
     const target = { prepend(element) { root = element; element.parentElement = target; } };
     const ctx = vm.createContext({
-      recording: { recorder: { state: 'recording' } }, features: { recorder: true, screenshot: true }, video: () => ({}), isLive: () => true,
-      button: (label, text, action) => ({ label, textContent: text, action, classList: { add() {} } }), screenshot() {}, showTimeMachine() {}, toggleRecording() {},
+      recording: { recorder: { state: 'recording' } }, rawRecording: null, features: { recorder: true, screenshot: true }, video: () => ({}), isLive: () => true,
+      button: (label, text, action) => ({ label, textContent: text, action, classList: { add() {} } }), screenshot() {}, showTimeMachine() {}, toggleRecording() {}, toggleRawRecording() {},
       document: {
         querySelector: () => target, getElementById: () => root,
         createElement: () => ({ dataset: {}, children: [], appendChild(el) { this.children.push(el); }, remove() { if (root === this) root = null; } }),
@@ -560,6 +655,8 @@ async function uiMain() {
     vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'ensureTools'), ctx);
     ctx.ensureTools(); root.children[0].textContent = 'STOP';
     ctx.features.screenshot = false; ctx.ensureTools(); assert.equal(root.children[0].textContent, 'STOP');
+    ctx.features.recorder = false; ctx.rawRecording = { source: {} }; ctx.ensureTools(); assert.equal(root.children[0].textContent, 'STOP');
+    ctx.rawRecording = null; ctx.ensureTools(); assert.equal(root.children.some(item => item.label === '방송 원본 조각 녹화 시작/저장'), false);
   });
   await check('TREND-FALLBACK: below-threshold lives still show the popular fallback', () => {
     const { selectTrendStreams } = require(path.join(repo, 'tools.js'));

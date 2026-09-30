@@ -1,4 +1,45 @@
-# CHZZK All-in-One 인수인계 / 현황 (2026-09-25)
+# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-09-30)
+
+## 최신 작업 위치와 버전
+
+- 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
+- `main`, HEAD `dacc340` (1.1.11), 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+- 현재 소스/로컬 미서명 빌드 `1.1.18`. 이전 1.1.12~1.1.17 작업을 포함한 미커밋 변경을 보존했다. 이번 작업에서는 commit/push/AMO 업로드/서명/릴리스를 하지 않았다.
+- 바탕화면 `C:\Users\hanbi\Desktop\opencode test\치지직\chzzk-all-in-one`과 비교해 추가 QA/인수인계 자료를 통합했다. 그쪽 파일은 수정·이동·삭제하지 않았다. 세부 원인·수정·검증은 문서 마지막 2026-09-29 절에 있다.
+
+## 2026-09-30 광고 응답 경계 처리 및 재생 호환성 보강, 1.1.18
+
+### 조사 범위와 원인
+
+- 사용자 요청대로 외부 참고 프로젝트의 README와 파일 구조에서 광고 처리 범위를 살펴봤다. 외부 구현·테스트 코드를 복사하거나 번들·의존성을 추가하지 않았다. 수정과 테스트는 기존 `page.js`에서 직접 재현한 문제를 기준으로 작성했다. 기존 LICENSE/NOTICE/author 표기는 유지했다.
+- 기존 코드에는 GFP 광고 스케줄, SSP 워터폴, 플레이어 광고 표시 신호, OPTIONS 상태 보정이 이미 있다. 이번 수정은 해당 처리 경로의 경계 조건과 브라우저 API 호환성에 한정했다. 현재 CHZZK에서 광고가 새로 뚫렸다는 사실이나 00:00 오류의 원인을 입증한 작업은 아니다.
+- 바이너리 광고 응답은 처음 두 바이트가 정확히 `{"`일 때만 검사했다. JSON 앞 공백·줄바꿈·UTF-8 BOM 또는 `{` 뒤 줄바꿈이 있으면 동일한 광고 객체도 누락됐다.
+- XHR 객체 응답은 getter를 읽을 때마다 복제했고, 실제 변경이 없어도 복제본을 반환했다. 같은 완료 응답을 반복해서 읽어도 객체가 달라지며 바이너리 변환도 반복될 수 있었다.
+- 전역 Uint8Array 생성자 패치는 Uint16Array 등 다른 typed array의 원소를 변환하지 않고 내부 바이트를 먼저 검사했다. 내부 바이트가 광고 JSON처럼 보이면 정상 원소 변환 대신 다른 길이·내용을 반환하는 오류를 재현했다.
+
+### 수정 내용과 보존 범위
+
+1. `neutralizeAdBuffer`: BOM과 JSON 공백을 건너뛰어 객체 후보만 디코딩한다. 기존 엄격 UTF-8 디코딩/JSON 파싱 및 광고 객체 식별을 유지한다. 잘못된 UTF-8, 깨진 JSON, 일반 JSON/영상 데이터는 변환하지 않는다.
+2. XHR: 기존 요청 WeakMap 안에 최근 완료 응답의 변환 결과를 보관한다. 원본 값·URL·GRID 설정이 같으면 결과를 재사용한다. `open()` 호출은 새 요청 메타데이터를 만들어 캐시를 초기화하고, GRID 설정 변경은 다시 평가한다. 변경이 없는 객체는 원본을 반환한다. native getter를 먼저 호출해 responseText 예외를 보존하고, 미완료·실패 응답은 그대로 반환한다.
+3. Uint8Array: native 생성으로 범위 검사와 원소 변환을 먼저 수행한 뒤 실제 생성 결과를 검사한다. 기존 buffer offset/length와 입력 버퍼 보존을 테스트했다. 새 fetch/XHR patch·Observer·timer·polling은 추가하지 않았다.
+4. manifest/package/lockfile 루트 및 packages[""] 버전을 1.1.18로 맞추고 로컬 ZIP/XPI를 빌드했다. 이번 작업의 실행 코드 변경은 `page.js`뿐이며 통나무·TM·REC/RAW·변환기·화질 선택 UI는 수정하지 않았다.
+
+### 검증 결과
+
+- 코드 분석: 기존 처리 범위, XHR getter 및 Uint8Array 생성자 계약을 확인했다. 기존 미커밋 변경과 QA 자료를 보존했다.
+- 재현 테스트: 새 테스트 5개가 수정 전 모두 실패하고 수정 후 모두 통과했다. `test/page.test.js` 20/20 통과.
+- 전체 자동 검사: `npm run test:all` 단위 71/71, 기본 회귀 20/20, 오디오 15/15, UI 17/17 통과. 이 검사는 Node/DOM/Web Audio 모형이며 실제 사이트의 모든 기능 정상 판정이 아니다.
+- JavaScript 문법: `node --check page.js`, `node --check test/page.test.js` 통과. 일반 `git diff --check` 통과, 추적 파일 삭제 없음. CRLF 파일에 `core.autocrlf=false`를 임시 적용한 검사에서 나온 CR 문자 경고는 일반 검사 결과와 구분한다.
+- 빌드: `dist/chzzk-all-in-one-firefox-v1.1.18.zip` 및 `.xpi`. 이전 1.1.17과 파일 목록 40개가 같고, 각 압축 파일의 바이트가 현재 소스와 일치한다. manifest/package/lockfile 2곳/내부 manifest 총 5곳이 1.1.18이다. ZIP/XPI SHA-256은 모두 `35D6C7741FB87D029BB5A1CD328C43BA738366577D948B4754960226C118F860`이다.
+
+### 실제 환경 미확인과 다음 확인
+
+- 이번 1.1.18을 Firefox 또는 실제 CHZZK에 설치해 확인하지 않았다. 광고 시작·중간 광고·경고 모달·채널 전환·GRID ON/OFF와 일반 방송 1080p, 제한 중계 최고 가용 화질은 사용자 실환경 확인이 남는다.
+- 로컬 XPI는 미서명이다. 이전 AMO 승인본과 별개의 결과물이다.
+- 이전 1.1.16 실제 Firefox 검사에서 확인된 MSE quota로 인한 장시간 일시정지 버퍼 정체는 여전히 미해결이다. 이번 광고 코드 변경이 무제한 버퍼를 구현한 것은 아니다.
+- 통나무 자동 지급/보유량의 로그인 계정 실환경 확인과, 클릭 직후 지급 확인 없이 시청 획득 로그를 만드는 기존 문제는 이전 기록대로 남는다.
+
+## 아래는 날짜별 누적 기록
 
 ## 기준과 작업 위치
 
@@ -177,3 +218,147 @@
 - `tools.js`의 기존 녹화 시작 지점에 해상도 비례 `videoBitsPerSecond`를 지정했다. 1080p는 12 Mbps, 720p는 약 5.3 Mbps, 480p는 하한 3 Mbps, 4K는 상한 16 Mbps다. 영상 크기를 아직 모르면 12 Mbps를 요청한다. 오디오는 192 kbps를 요청한다. 기존 MIME 우선순위, Firefox 오디오 모니터·컴프레서 연결, 공유 캡처, 결과 창, 원본 저장/변환 흐름은 그대로 둔다. 선택값은 브라우저가 조정할 수 있고, 실제 인코딩 품질은 보장하지 않는다. 더 큰 파일·CPU 사용량 및 장시간 녹화 메모리 부담을 예상한다.
 - `test/tools.test.js`에 해상도·상하한값 검사, `qa/regression.cjs --audio`의 녹화 시작 실패 경로에 실제 MediaRecorder 생성자 옵션 확인을 추가했다. QA 목록에 1080p 30초 이상 WebM 원본을 재생 화면과 비교하고 480p 제한 중계를 확인하는 항목을 추가했다. README에는 `원본 WebM`이 방송 전송 파일의 무손실 복사본이 아니라는 점을 설명했다. 사용자의 별도 프로그램 설치 요구는 없다.
 - 검증: `npm run test:all` 단위 58/58, 기본 회귀 16/16, 오디오 14/14, UI 17/17 통과. 루트 JS 14개와 변경 QA/테스트 문법 통과. `build.ps1`로 1.1.11 ZIP과 미서명 XPI 생성. 이전 1.1.10 ZIP 대비 40개 패키지 항목 모두 유지(추가·삭제 0), ZIP 내부 manifest와 프로젝트 package/lock 버전 모두 1.1.11. `web-ext lint --self-hosted` 오류 0, 기존 경고 2. 실제 Firefox에서 새 WebM의 해상도·프레임·비트레이트·소리, 실제 CHZZK 영상과의 시각 비교, Mozilla 서명은 아직 확인하지 않았다. 기존 승인 1.1.10은 변경되지 않았다.
+
+## 2026-09-25 HLS RAW 녹화 시험 경로, 1.1.12
+
+- 사용자 확인: 1.1.11의 REC WebM 화질은 개선됐으나 재인코딩 없는 방송 원본 저장을 원한다. 출력은 원본 스트림 형식 그대로(.ts 또는 분할 MP4) 선택했다. 기존 REC는 `MediaRecorder`에서 VP8/Opus로 다시 인코딩하므로 비트레이트를 높여도 전송된 H.264/AAC 조각의 바이트 그대로는 될 수 없다.
+- 변경: 기존 `timeshift.js`의 본방송 HLS 탐색을 재사용해 `hlsFragLoaded` 이벤트를 RAW 녹화가 켜진 동안에만 듣는다. 새 fetch/XHR/webRequest 후킹이나 별도 플레이어·폴링은 추가하지 않았다. 주 플레이어가 받은 `main` 조각의 ArrayBuffer를 즉시 복사한다. MPEG-TS는 순서대로 `.ts`, fMP4는 HLS 초기화 조각과 연속 미디어 조각을 `.mp4`로 연결한다. 압축 영상·오디오 페이로드를 재인코딩하지 않는다. 플레이어 도구에 `RAW` 버튼을 별도로 추가했으며 `STOP` 시 해당 파일을 직접 다운로드한다. 기존 `REC`의 오디오 모니터, WebM, 결과 창, MP4/GIF/WebP 변환은 변경하지 않았다.
+- 보호: 광고 플레이어와 팔로잉 hover 플레이어가 아닌 본방송 HLS 인스턴스만 사용한다. 별도 오디오 조각, 암호화, 저지연 부분 조각, 지원하지 않는 형식, 화질/포맷 전환, 시퀀스 누락을 감지하면 중단한다. 방송/플레이어 교체와 탭 종료에도 중단한다. 이미 받은 연속 구간이 있으면 부분 파일 다운로드를 시도하고 사용자에게 이유를 보여준다. 이 방식은 녹화 시작 전에 이미 버퍼에 있던 구간을 저장하지 않으며, 전체 Blob을 탭 메모리에 모으므로 장시간 녹화의 메모리 한계가 있다. 자동 다운로드 요청의 실제 저장 성공은 Firefox 다운로드 목록 확인이 필요하다.
+- 검증(자동): `npm run test:all` 단위 60/60, 기본 회귀 16/16, 오디오 14/14, UI 17/17 통과. RAW 단위 테스트에서 TS/fMP4 바이트 보존, 초기화 조각 포함, 시퀀스 누락 시 부분 파일, 이벤트 리스너 해제를 확인했다. MAIN/isolated 도구 명령의 모의 DOM 흐름에서 본방송 HLS 연결, 원본 다운로드 이름, 종료 응답을 확인했다. 변경 JS 문법 검사와 `git diff --check` 통과. FFmpeg로 생성한 H.264/AAC fMP4 샘플에서 init+조각 연결 파일이 `ffprobe`와 디코딩을 통과했다. 방송 중간부터 결합한 샘플도 디코딩됐지만 시작 시간이 0이 아니고 컨테이너 길이에 앞부분이 포함됐다. 이는 RAW 파일 탐색·길이 표시가 실제 재생 시간과 다를 수 있는 한계다.
+- 빌드: `dist/chzzk-all-in-one-firefox-v1.1.12.zip`과 미서명 `.xpi`를 생성했다. 이전 1.1.11 패키지 대비 항목 40개가 모두 유지됐고 추가·삭제는 없다. manifest/package/package-lock 및 ZIP 내부 manifest 모두 1.1.12, ZIP/XPI SHA-256 동일. `web-ext lint --self-hosted`: 오류 0, 기존 경고 2(CSP WASM, 고정 경로 dynamic import). 공식 AMO 승인본 1.1.10과 별개다.
+- **실제 미확인**: Firefox의 MAIN world에서 CHZZK 플레이어가 `hlsFragLoaded` 이벤트를 이 형태로 내보내는지, 일반 방송 fMP4의 초기화 조각·오디오가 한 파일로 재생되는지, 스포츠 TS의 오디오·화질, 페이지 출처의 Blob 다운로드 허용, 30분 이상 녹화의 메모리, 시작 시간/탐색 UI를 확인하지 못했다. 사용자 Firefox에서 `QA-CHECKLIST.md`의 RAW-01~05를 먼저 확인한다. 실패한다면 받은 파일 형식·재생 오류·대략 길이만 기록하고 토큰이 있는 URL은 공유하지 않는다. 실방송 확인 전 AMO 업로드/릴리스/원격 push는 하지 않았다.
+
+## 2026-09-25 타임머신 과거 버퍼 제한 해제, 1.1.13
+
+- 사용자 요청: 타임머신 버퍼를 거의 무제한으로 보존. 작업 전 `main`/HEAD `dacc340`, 이전 1.1.12 RAW 시험 경로의 미커밋 변경 10개 파일을 확인했다. 해당 변경은 보존하고 그 위에서 수정했다. 현재 Git 원격 반영 및 AMO 승인본은 여전히 1.1.11/1.1.10 상태이며 이 작업에서는 push/업로드하지 않았다.
+- 원인: `timeshift.js`가 TM 활성화 시 본방송 HLS `backBufferLength`를 300초로 지정했다. 이는 Firefox 메모리와 관계없이 확장 코드가 약 5분 이전의 버퍼를 제거하게 만드는 제한이다. `cheese-knife` 원본은 `Infinity`를 사용하고 있었고, hls.js 공식 API 문서도 `Infinity`를 HLS의 과거 버퍼 자동 제거 제한 없음으로 설명한다. 별도의 `maxBufferSize`/`maxBufferLength`/`maxMaxBufferLength`는 전방 버퍼 설정이다.
+- 수정: 기존 `createTimeShift().enable()`의 `backBufferLength`만 `Infinity`로 바꿨다. 전방 버퍼 수치, 타임머신 패널과 탐색 범위, LIVE 복귀, 플레이어 교체와 실패 시 원본 설정 복원, 광고/GRID/화질/REC/RAW/오디오 경로는 변경하지 않았다. 사용자가 TM 패널을 열어 버퍼 유지 모드를 켰을 때 적용되고, LIVE·패널 닫기에서 기존대로 원래 HLS 설정으로 돌아간다. 이미 버려진 과거 구간을 다시 가져오지는 않는다.
+- 검증: `test/timeshift.test.js`에서 활성화 후 값이 `Infinity`임을 확인하도록 바꿨고, 기존 LIVE/닫기/교체 복원 테스트를 유지했다. `npm run test:all` 통과: 단위 60/60, 기본 회귀 16/16, 오디오 14/14, UI 17/17. 변경 JavaScript 및 QA 문법 검사, `git diff --check` 통과. 추적 파일 삭제 없음. 1.1.13 ZIP/XPI를 빌드했으며 이전 1.1.12 패키지의 40개 항목을 모두 유지했다. ZIP 내부 manifest와 루트 manifest/package/lock 버전 모두 1.1.13, ZIP/XPI 바이트 동일. 이전 1.1.12 `web-ext lint`는 오류 0·기존 경고 2였고 이 숫자 설정 변경 뒤에는 반복 실행하지 않았다.
+- 실제 제한과 남은 확인: hls.js가 제거하지 않아도 Firefox의 MSE 메모리 관리가 오래된 구간을 제거할 수 있다. 장시간 켜둘수록 메모리 사용과 버퍼 압박이 늘 수 있다. 실제 Firefox/CHZZK에서 10분 이상 `buffered` 시작·끝 시각, TM 패널의 저장 시간, 재생/소리, LIVE 복귀, 플레이어 교체, 브라우저 메모리를 아직 확인하지 못했다. `QA-CHECKLIST.md` 25절의 수동 항목으로 확인한다. 1.1.13 XPI는 미서명 시험 빌드다.
+
+## 2026-09-25 채팅 글자 크기·통나무 로그·GIF 프로필 정리, 1.1.14
+
+- 작업 전 상태: 작업 루트 `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`, `main` HEAD `dacc340`/원격 `origin/main`. 1.1.12 RAW 및 1.1.13 TM 작업의 미커밋 파일을 보존했다. 이번 변경은 그 위에 적용했으며 Git push·AMO 업로드·서명·릴리스는 하지 않았다.
+- 채팅 원인: 현재 CHZZK 라이브 페이지의 채팅 DOM에서 기존 `[class*='live_chatting_message_text'], [data-message-text]` 선택자는 0개, 새 `aside#aside-chatting [role='log'] [class*='_chatting_message_'] > [class*='_text_']` 선택자는 14개 메시지와 일치했다. 해당 사이트 DOM은 2026-09-25 공개 페이지에서 읽기 전용으로 확인했다. `tools.js`의 기존 스타일 규칙에 새 선택자를 추가하고 이전 선택자는 유지했다. 설정 저장·즉시 반영 흐름, 채팅 입력·닉네임은 변경하지 않았다.
+- 통나무 원인과 수정: 직접 `view` 버튼 클릭과 확장의 PUT 성공 경로만 로그를 작성했다. 직접 사이트 버튼으로 획득하거나 PUT 응답에 유효한 획득 수량이 없으면 성공 후에도 로그가 없을 수 있었다. 기존 `log-power` 잔액 조회 시 같은 채널의 이전 잔액보다 증가한 양에서 그 사이 이미 기록한 양을 빼고, 남은 양만 `OTHERS`(기타) 로그로 저장한다. 채널 첫 조회·잔액 감소·비활성 상태/재활성 직후는 증가 기록으로 보지 않는다. 새 폴링/API 패치는 없고 기존 30초 조회를 재사용한다. 기존 view/FOLLOW/prediction 상세 로그와 저장된 기록은 유지한다. 서버의 잔액이 다른 이유로 증가하면 보완 기록은 `기타`로 표시되며 구체적인 지급 종류는 추정하지 않는다.
+- 사용자 요청에 따라 움직이는 GIF 프로필 자동 재생 설정·URL 변경 코드·전용 MutationObserver를 제거했다. `movingGifProfile`의 기존 저장값은 삭제하지 않았고 비활성 데이터로 남는다. 파워 배지, 보유량, 자동 획득, 로그 창, 프로필 기본 표시 등 다른 경로는 유지했다.
+- 검증: `npm run test:all` 단위 60/60, 기본 회귀 18/18, 오디오 14/14, UI 17/17 통과. 이후 비활성 전환에 관한 작은 가드를 추가해 기본 회귀 18/18을 다시 통과했다. `content.js`, `tools.js`, `popup.js`, `qa/regression.cjs` 문법 검사와 `git diff --check` 통과. `qa/regression.cjs`는 새/기존 채팅 선택자와 잔액 증가, 기존 로그 공제, 채널 변경·감소·비활성 제외를 확인한다. 추적 파일 삭제 없음.
+- 빌드: `dist/chzzk-all-in-one-firefox-v1.1.14.zip` 및 동일 바이트 미서명 `.xpi` 생성. manifest/package/lockfile 루트/lock 루트 패키지/ZIP 내부 manifest 버전 모두 1.1.14. 1.1.13 패키지의 40개 항목 모두 유지했다. 기존 빌드·Git 이력·사용자 데이터는 보존했다.
+- 실제 미확인: 현재 사이트의 메시지 DOM 선택자는 확인했지만 수정한 확장을 Firefox에 설치해 글자 크기를 바꾸는 동작은 테스트하지 않았다. 로그인 계정의 통나무 실제 획득·잔액 증가·로그 창 반영, 수동 획득의 기록 종류, 여러 탭이 같은 채널을 볼 때 중복 기록 여부는 Firefox/실제 CHZZK에서 확인이 필요하다. `QA-CHECKLIST.md`의 EXT-06, CLAIM-10/10A, POWER-08을 사용한다.
+
+## 2026-09-28 일시정지 버퍼 유지와 REC 음소거 독립 회귀 고정, 1.1.15
+
+- 인수인계 작업(2026-09-28). 작업 전 상태: 이 문서에 기록된 1.1.12 RAW·1.1.13 TM 무제한 버퍼·1.1.14 채팅/통나무 변경이 모두 미커밋 working tree에 있었고, 1.1.15 작업(일시정지 버퍼 유지)은 코드·테스트·README/QA 문서까지 완료돼 있었으나 HANDOFF 섹션과 1.1.15 빌드가 없었다. 이 섹션이 그 빈 부분을 채운다. 안전 patch 사본은 `qa/session-start-20260928.patch`, 시작 상태 기록은 `qa/session-start.md`에 있다.
+- 기능 내용(기존 working tree에서 확인): 본방송이 일시정지되면 TM 패널을 열지 않아도 `timeshift.js`의 `keepPausedBuffering`이 HLS 앞쪽 버퍼 목표(`maxBufferLength`/`maxMaxBufferLength`)를 3600초로 올리고 `resumeBuffering`/`startLoad(currentTime, true)`으로 조각 로딩을 재개한다. 재생이 재개되면 원래 적용값으로 되돌리고 `pausedValues`를 비운다. hls.js가 메모리 압박으로 목표를 낮춘 값은 재상향하지 않는다. `restore`는 `pausedValues`에 적용된 값을 기준으로 원래 설정을 복원한다. 서버 DVR 위조가 아니라 로컬 버퍼 유지이며, 실제 보존 길이는 Firefox 메모리·MSE 한도에 좌우된다.
+- REC 음소거 독립은 기존 구현 동작(캡처 스트림은 시청 음소거와 분리, 시청용 모니터만 음소거)을 `qa/regression.cjs --audio`의 `AUDIO-MUTED-REC`와 QA-CHECKLIST REC-06A로 회귀 고정했다. 코드 변경은 없다.
+- 검증(자동, 2026-09-28): `npm test` 단위 63/63, `npm run test:audit` 기본 회귀 18/18·오디오 15/15·UI 17/17 통과. 루트 JS 14개 `node --check` 통과. 일시정지 버퍼 테스트는 조각 로딩 재개·목표 상향·재개 시 복원·메모리 압박 하향 보존을 가짜 HLS로 확인한다. 이는 Firefox/실제 방송 검증이 아니다.
+- 빌드: `dist/chzzk-all-in-one-firefox-v1.1.15.zip` 및 미서명 `.xpi` 생성. manifest/package/lockfile 루트/lock 루트 패키지/XPI 내부 manifest 모두 1.1.15.
+- 실제 미확인: Firefox에서 6분 이상 일시정지 후 `buffered.end` 전진, 재생 재개 지점, LIVE 복귀, 음소거 상태 REC 파일의 소리는 `QA-CHECKLIST.md` 25절·REC-06A의 수동 확인이 필요하다.
+
+## 2026-09-28 실제 Firefox E2E·성능 세션 (코드 변경 없음)
+
+이 섹션은 2026-09-28 자동화 세션의 실측 기록이다. 이 세션에서 확장 소스·버전은 변경하지 않았다. 모든 산출물은 `qa/` 아래에 있고 Git push·커밋은 하지 않았다.
+
+### E2E harness (qa/firefox-e2e/, 프로젝트 코드와 분리)
+
+- 구성: geckodriver 0.36.0 + Selenium WebDriver + 실제 설치된 Firefox 156.0.1 (프로덕션 바이너리). Firefox는 세션별 임시 프로필로 띄우고, WebDriver BiDi `webExtension.install`로 프로젝트 루트(언팩 상태)를 temporary add-on으로 설치한다. 사용자의 실제 Firefox 프로필은 건드리지 않는다.
+- BiDi 사용법 메모: 세션 생성 시 `webSocketUrl: true` capability가 필요하고, `webExtension.install`의 파라미터는 `{ extensionData: { type: "path"|"archivePath", path } }` 형태다. `archivePath`(XPI) 설치는 Firefox 156에서 `nsIZipReader.open` 실패(NS_ERROR_FAILURE)로 동작하지 않았고(빌드 ZIP을 이용한 BiDi 설치의 알려진 제한, AMO/수동 설치와는 무관), 언팩 디렉터리 `path` 설치는 성공했다. `--websocket-port`는 0(자동 할당)으로 두고 응답의 `webSocketUrl`을 쓴다. 고정 포트는 다른 프로그램과 충돌할 수 있다(9777 충돌 사례).
+- 재생 시작: CHZZK는 소리 있는 autoplay를 막는다. 합성 MouseEvent는 무신뢰(untrusted)라 무시되며, WebDriver의 신뢰 클릭(플레이 버튼/video)과 space 키 입력으로 재생을 시작한다.
+
+### 핵심 E2E 결과 (qa/firefox-e2e-results.json, 7/7 PASS)
+
+실제 라이브(EOE 방송, 1080p)에서 확장 설치 후:
+
+1. PLAY: 1080p 재생, currentTime 진행, readyState 4, paused=false.
+2. UI-01: `#hanbi-player-tools` 1세트, 버튼 REC/RAW/SHOT/Q 1080p/TM (Q 버튼 텍스트에 실제 디코딩 높이 표시), 중복 없음.
+3. QUALITY: 실제 `videoHeight`=1080 확인.
+4. AD-MODAL: 관찰 구간에서 광고 차단 경고·치트키 모달 없음. (실광고/실경고 유발은 강제 불가 — fixture 회귀 테스트로 보완, 실광고 검증은 아님)
+5. SPA-DUP: 채널 3회 이동 반복에서 툴바 항상 1개, `id^=hanbi` 중복 0.
+6. SPA-PLAY: 이동 후 재생 회복(1080p, 프레임 진행).
+7. CONSOLE: 세션 중 미처리 오류 0.
+
+### 1.1.15 일시정지 버퍼 실측 (qa/firefox-e2e-pause-results.json)
+
+일반 라이브에서 TM 패널을 열지 않고 space로 일시정지, 6분 관찰:
+
+- **작동 확인**: 일시정지 직후 조각 로딩이 재개돼 `buffered.end`가 47.0→62.0초로 전진했다(일시정지 시점 +15초). `buffered.start`는 26.0→44.0으로 전진해 MSE가 가장 오래된 구간을 트리밍하는 동안 일시정지 지점(45.3초) 구간은 끝까지 보존됐다.
+- `currentTime`은 6분 내내 45.27315초로 완전 동결(변화 0).
+- **발견(미해결)**: (a) `buffered.end`는 +15초 진행 후 더 이상 전진하지 않았다. 라이브 에지가 6분간 계속 전진했음에도 일시정지 중 추가 로딩이 멈췄는데, hls.js가 일시정지 중 라이브 에지 추적 로딩을 하지 않는 동작으로 보인다. QA-CHECKLIST 25절의 "`buffered.end` 계속 전진" 기대는 관찰 첫 15초만 충족됐다. (b) 재생 재개 시 멈춘 지점이 아니라 라이브 에지(410초)로 이동했다. 일시정지 지점 버퍼는 남아 있었으므로 확장이 재개 시점에 seek 보정을 하면 멈춘 지점 재개가 가능할 수 있으나, 이는 1.1.15의 계약(README: 재개 시 앞쪽 버퍼 목표만 복원)에 없는 동작이라 이번 세션에서 구현하지 않았다. 사용자 판단이 필요하다.
+- 이 테스트의 PAUSE-RESUME 시나리오는 위 발견 때문에 FAIL로 남겨뒀다. 테스트 조건을 약화해 PASS로 바꾸지 않았다.
+
+### 성능 측정 (qa/performance-results.json + perf-off/on.json)
+
+동일 방송(에게리 같이보기, 480p)에서 10분씩 연속 실행, 확장 OFF → ON. CPU/메모리는 QA 세션 Firefox 프로세스만 집계(사용자 브라우저 PID 차집합).
+
+| 지표 | OFF | ON | delta |
+|---|---|---|---|
+| paused 샘플 (600초/600샘플) | 0 | 0 | 0 |
+| currentTime 진행 | 610.2s | 625.5s | +15.3s |
+| dropped frames | 0 | 0 | 0 |
+| 프레임 간격 p50/p95/p99 (ms) | 6.06/6.06/6.08 | 6.06/6.06/6.08 | 동일 |
+| hitch 윈도(>50ms 프레임) | 0/3 | 0/3 | 0 |
+| QA Firefox CPU (평균, 1코어 기준) | 29.3% | 37.0% | +7.7%p |
+| QA Firefox 메모리 증가 | +38MB | +141MB | +103MB |
+| api.chzzk.naver.com 응답 | 64회 | 94회 | +30회 |
+| 확장 DOM 중복 id | 0 | 0 | 0 |
+
+- CPU 증가(+7.7%p)는 10분 세 구간에서 20.94→21.12→20.71 s/min으로 평탄하다 — 상승 추세(누수형)가 아닌 일정 오버헤드다. 메모리는 +34MB/10분의 완만한 추가 증가가 있어 30분 이상 soak에서의 추이 확인이 남아 있다.
+- +30회/10분의 API 증가는 통나무 30초 폴링(20회)+트렌드 갱신 1분(10회) 주기와 정확히 일치한다. 폴링 폭주 없음.
+- stall 이벤트 수(18/2)는 측정 창 경계의 인위적 gap이 포함된 수치라 절대 비교용이 아니다(진행률이 걸린 실정체는 0).
+- 첫 시도(EEO 방송 종료, 화질 불일치)는 무효라 `perf-*-run1.json`으로 보존만 했고 비교에서 제외했다.
+
+### 이 세션에서 검증하지 못한 것
+
+- 실제 광고(pre/mid-roll)·광고 차단 경고 모달이 실제로 뜨는 방송, GRID 사용 방송, 제한 중계(스포츠)의 실환경 검증 — 재현 가능한 방송이 없었다. fixture 기반 회귀 테스트(단위 63/63, 회귀 18/18, 오디오 15/15, UI 17/17)가 유일한 근거다.
+- REC/RAW 녹화·결과 창·변환의 실제 파일 출력, 음소거 REC 오디오(REC-06A), 팔로잉 알림/로그인 필요 기능, 통나무 실제 획득.
+- 30분 이상 soak, 다중 탭, TM 패널을 연 상태의 장시간 버퍼 유지.
+- 블랙박스 사람 관점 UI 테스트는 WebDriver가 코드를 읽지 않고 실제 클릭/키 입력으로 수행한 위 E2E가 대체하며, 로그인 필요 흐름은 제외다.
+
+## 2026-09-29 바탕화면 QA 통합·TM 실제 회귀 수정·ZIP 빌드 검증, 1.1.16
+
+### 작업 상태와 통합 범위
+
+- 두 경로의 실제 확장 저장소는 각각 내부 `chzzk-all-in-one`이다. 두 저장소 모두 `main`, HEAD `dacc340`, 같은 origin URL이며 소스 버전은 시작 시 1.1.15였다. 바깥 폴더의 Git은 커밋이 없는 별도 래퍼 저장소다. 해당 래퍼는 변경하지 않았다.
+- 추적 파일 해시 비교에서 두 복사본의 차이는 `HANDOFF.md`뿐이었다. 바탕화면 추가 내용은 2026-09-28 실환경 QA 도구/측정 JSON/세션 시작 patch와 문서였다. 문서의 추가 기록과 QA 파일 20개를 기준 저장소로 통합했다. 기존 1.1.12~1.1.15 미커밋 기능 코드와 사용자 변경은 보존했다. 최종 실행 JS/CSS/HTML을 바탕화면과 재대조한 결과 이번 작업에서 달라진 실행 파일은 `timeshift.js`뿐이다.
+- 바탕화면 파일은 수정·삭제하지 않았다. Git commit/push/태그/릴리스/외부 업로드/서명은 수행하지 않았다. 생산 코드와 빌드는 바탕화면 경로에 의존하지 않는다. E2E 실행 때만 이미 설치되어 있던 바탕화면 Selenium/Geckodriver를 일회성 NODE_PATH로 참조했다. 추가 프로그램/패키지 설치는 하지 않았다.
+
+### 실제 원인 및 수정
+
+1. **일시정지 버퍼가 약 15초 후 멈춤**: 실제 Firefox에서 HLS 1.6.13-alpha.15의 `maxBufferLength=3600`인데 `maxMaxBufferLength=15`가 되는 것을 확인했다. 현재 CHZZK 배포 `player-vendor-BYg0wCyN.js`의 `_updateHlsConfig`/`applyStreamingProfile` 호출 스택에서 사이트 profile이 상한을 15초로 덮었다. 기존 코드는 모든 외부 하향을 메모리 압박으로 간주해 이 덮어쓰기도 유지했다.
+2. `findHls`가 찾은 `_mediaController`를 WeakMap에 기록하고, TM 활성 상태에서 그 인스턴스의 `_updateHlsConfig`에만 호환 처리를 적용했다. 사이트가 요청한 설정은 기존 함수와 userConfig에 정상 전달하면서 TM이 관리 중인 네 버퍼 값을 유지하고, 해제할 원래 값에는 최신 사이트 요청을 기록한다. HLS 자체의 메모리 오류 회복용 하향은 이 사이트 함수를 통하지 않으므로 그대로 존중한다. LIVE·패널 닫기·플레이어 교체·연결 실패 시 함수와 설정을 복원한다. 추가 네트워크 후킹, polling, 별도 플레이어는 없다.
+3. **재개 시 강제로 라이브 끝 이동**: 같은 실제 bundle의 `_attachPlayer`가 pause 다음 play에서 `live.timeMachine === false`인 일반 라이브를 사이트 `seekable.end`로 이동시키는 것을 호출 스택과 원문으로 확인했다. 기존 `synchronizeToLiveEdge` 패치만으로는 이 별도 경로가 차단되지 않았다. play 이벤트 처리 동안에만 본방송 video의 currentTime 접근자를 임시 연결해, 저장된 위치가 아직 버퍼에 있고 사이트가 바로 라이브 끝으로 이동시키는 첫 할당만 제한한다. 다음 task에서 원래 접근자를 복원한다. 사이트 seekable은 native video.seekable에서 지연 보정된 값이므로 `_mediaController.seekable`을 기준으로 한다. 일반 위치 탐색·명시적인 확장 LIVE·버퍼 소실 시 기본 회복은 유지한다. API timeMachine 자격/플래그를 위조하지 않았다.
+4. **바탕화면 1.1.15 ZIP/XPI 설치 실패**: 두 파일 모두 257바이트 위치에서 `ustar` 서명을 확인했다. `.zip/.xpi` 이름의 실제 TAR이며 .NET ZIP reader가 central directory 없음으로 거부했다. 이전 문서의 Firefox 156 archivePath 자체 제한이라는 설명은 철회한다. `build.ps1`은 `--format=zip`을 명시하고 tar 종료 코드, ZIP reader 열기, 40개 항목의 이름/개수 및 내부 manifest 버전을 검증한 뒤 XPI를 복사한다. 잘못된 기존 파일을 덮거나 삭제하지 않았다.
+
+### 자동 검증과 실제 Firefox 검증을 구분
+
+- `npm run test:all`: 단위 **66/66**, 기본 회귀 **18/18**, 오디오 **15/15**, UI **17/17** 통과. 사이트 profile 재적용, userConfig/원래 설정 복원, HLS 자체 하향 유지, 지연 보정된 seekable 재개, 접근자 해제, 버퍼 소실/플레이어 교체/LIVE 회귀를 추가했다. 이는 가짜 DOM/API 기반 검사이며 실제 소리 확인이 아니다.
+- 루트 JavaScript 전부, 수정 단위/E2E 테스트의 문법 검사 및 PowerShell build.ps1 구문 분석 통과. `git diff --check` 통과. 추적 파일 삭제 없음. 기존 PIP 주석 처리, RAW/REC, 광고, GRID, 화질, 변환, 통나무, 설정, 라이선스/아이콘은 이번 수정에서 변경하지 않았다.
+- **실제 Firefox 156.0.1, headless 임시 프로필, CHZZK 일반 라이브 1080p**: 수정 후보 1분 검사에서 currentTime 36.165816초가 유지되고 buffered.end가 50→110.010687초로 전진했다. 재개 2.5초 뒤 currentTime 38.525607초로 멈춘 위치에서 진행했다. 이 결과는 버전 번호 변경 직전 `qa/firefox-e2e-pause-results-1.1.15.json`이며 구버전 원본의 결과가 아니다.
+- **최종 소스 6분 검사** `qa/firefox-e2e-pause-results-1.1.16.json`: currentTime 36.892606초가 유지됐고 재개 후 39.096793초에서 정상 진행했다. 그러나 buffered.end는 52.005333→183.994645초까지만 늘고 멈췄으므로 지속 수집 항목은 **FAIL**이다. 이 실패를 숨기거나 테스트 조건을 완화하지 않았다. 15초 덮어쓰기와 재개 점프는 해결됐지만 6분 전체 버퍼 수집은 아직 충족하지 못한다.
+- 기존 E2E의 `last.be > pausePoint.be + 5`는 첫 15초만 증가해도 6분 내내 수집했다고 판정했다. 시작 직후 한 번의 증가만으로 통과하지 않도록 첫 샘플 이후 경과 시간 대비 실제 전진량과 모든 샘플의 고정 위치를 확인하도록 수정했다. 실패는 종료 코드 1이다. 이전 바탕화면 결과는 역사 자료로 남긴다.
+
+### 빌드와 재현 자료
+
+- manifest/package/package-lock 루트 및 packages[""]/ZIP 내부 manifest 모두 **1.1.16**. 정상 이전 1.1.14와 비교해 40개 패키지 항목 모두 유지했고, 압축 안의 모든 파일 해시가 소스와 일치함을 확인했다. ZIP/XPI는 동일 바이트이며 마지막 명시적 ZIP 빌드의 SHA-256은 `8A3BC3C9CCCC509AEEC3763F81666AEAB18176F425409EABEFB5CB08C4B2CC17`이다.
+- 결과물: `dist/chzzk-all-in-one-firefox-v1.1.16.zip`, `dist/chzzk-all-in-one-firefox-v1.1.16.xpi`. 미서명이다. AMO 승인/영구 설치 가능 여부와 분리한다.
+- 참고한 배포 코드: https://ssl.pstatic.net/static/nng/glive/resource/p/static/js/player-vendor-BYg0wCyN.js (2026-09-29 실제 요청/호출 스택에서 확인). HLS 공식 구현: https://github.com/video-dev/hls.js/blob/v1.6.13/src/controller/base-stream-controller.ts . 사이트 bundle 내부 API는 향후 변경될 수 있으므로 현재 계약을 찾지 못하면 기존 HLS 동작을 유지한다.
+- 아직 실제 확인하지 않은 범위: 로그인 계정 통나무 획득/로그, 음소거 REC 파일의 실제 오디오, RAW 및 변환 결과, 광고 전후/스포츠 제한 중계, 공식 서버 타임머신, 사이트 자체 LIVE 버튼/수동 화질 변경과 재개 보호의 조합, 30분 이상 버퍼/메모리와 다중 탭. 이 목록을 정상이라고 선언하지 않는다.
+
+### 추가 실측: 장시간 제한 확정 및 XPI 설치
+
+- 같은 일반 라이브의 3분 재검증에서 **`bufferFullError` / `QuotaExceededError` 5회**를 기록했다. HLS `maxMaxBufferLength`가 3600→145.844554초로 낮아지고 buffered.end는 182.266666초에서 정체됐다. 현재 재생 위치 34.422112초는 유지됐고 재개 시 36.752382초로 진행했다. 로딩/버퍼링 상태는 true였으며 HLS는 IDLE이었다. 이 중단은 Firefox MSE 버퍼 용량 한도에 도달한 결과다. 확장이 quota 회복 하향을 되돌리지 않음을 실제로 확인했다.
+- `qa/firefox-e2e-pause-results-1.1.16-quota.json`에 토큰/미디어 URL 없이 상태와 오류명을 저장했다. 이 시험은 전체 평균 전진량 기준으로 PAUSE-BUFFER를 PASS 출력했지만, 마지막 45초 정체/Quota 오류가 있어 지속 수집 충족이 아니다. 원시 결과는 보존하고 `assessment`에 실패 판정을 추가했다. 재발 방지를 위해 E2E에 마지막 4샘플 전진량·bufferFullError 실패 조건을 추가하고 모든 샘플을 저장한다. 기존 6분 실패 기록도 보존한다. 같은 브라우저 시험을 다시 반복하지 않고 저장된 자료로 판정 보강을 검증했다.
+- 같은 임시 Firefox 156.0.1에서 기존 언팩 확장을 제거한 뒤 **1.1.16 XPI를 BiDi archivePath로 설치 성공**, 확장 ID `chzzk-all-in-one@hanbi` 확인. `qa/firefox-xpi-install-1.1.16.json` 기록. 이는 **임시 설치**이며 Mozilla 서명/영구 설치 승인이 아니다.
+- **남은 최우선 과제**: 무제한에 가까운 일시정지 수집은 미완료다. 현재 구현은 Firefox MSE 메모리에만 저장하고, 이 1080p 시험에서는 대략 2분대 한도에 도달했다. 방송 비트레이트·브라우저 환경에 따라 한도는 달라진다. 한도를 억지로 재상향하거나 버퍼링 실패를 성공으로 표시하지 않았다. 더 긴 보존은 별도 로컬 디스크 조각 저장/재생 설계 등 MSE 밖 저장 경로를 검토해야 한다. 그 작업은 기존 REC/RAW 및 타임머신 조작을 보존하면서 별도로 구현·검증해야 하며 이번 통합판에 완료됐다고 주장하지 않는다.
+- 마무리 중 자동 승인 검토가 크레딧 부족으로 중단되어 마지막 QA/문서 보강이 적용되지 않았었다. 사용자의 재개 요청 후 파일 상태를 확인하고 보강을 반영했다. 이 재개 단계에서는 배포 코드 변경이나 실방송 재시험 없이 기존 실측 자료의 판정과 최종 파일 상태를 확인했다.
+
+## 2026-09-29 통나무 점검 및 불필요한 지급/조회 반복 수정, 1.1.17
+
+- 사용자 요청: 버퍼 외 개선점, 특히 통나무가 실제로 잘 동작하는지 점검. 기준 저장소 main/HEAD dacc340 및 기존 미커밋 변경을 보존했다. content.js의 보유량 조회·DOM 자동 받기·PUT 지급·잔액 증가 보완 로그와 log-store.js, 해당 QA만 조사했다. 로그인 계정의 실제 획득은 실행하지 않았다.
+- **코드로 확인한 원인**: `fetchAndUpdatePowerAmount`는 claims가 하나라도 있으면 지급 결과와 무관하게 1초 후 자신을 다시 호출했다. 자동 획득 OFF, WATCH_1_HOUR처럼 PUT에서 건너뛰는 항목만 있음, HTTP/서버 오류일 때도 claims가 남아 있으면 이 재조회가 계속됐다. `claimPower`는 지급 성공 여부를 반환하지 않았고, pendingClaims는 요청 중에만 중복을 막아서 성공한 보상이 서버 목록에 잠시 남으면 같은 PUT을 다시 보낼 수 있었다.
+- **최소 수정**: claimPower는 명시적으로 성공/실패를 반환한다. HTTP 및 응답 code=200을 확인한 지급만 true다. 최근 성공한 채널/보상 ID를 탭 메모리의 최대 200개 Set으로 보존해 중복 지급 요청을 막는다. 실패는 성공 집합에 들어가지 않아 기존 정기 조회에서 재시도할 수 있다. 기존 WATCH_1_HOUR DOM 자동 받기 경로는 유지한다.
+- 활성/비활성 채널 모두 성공한 지급이 있을 때만 기존 1초 잔액 새로고침을 예약한다. 예약 후 다른 채널로 이동하면 이전 콜백을 무시한다. 기존 30초 상태/보유량 조회, 1초 DOM 버튼 감지, 자동 획득 설정, 비활성→재활성 감지, 배지와 로그 UI는 유지한다. 팔로우 감지의 후속 지급 조회도 실제 지급 성공 때만 진행하도록 했다. 새 polling/observer/timer는 추가하지 않았다.
+- **검증**: 수정 전 새 QA 두 항목이 실패하고 기존 18항목은 통과함을 재현했다. 수정 후 `npm run test:all`: 단위 66/66, 기본 회귀 20/20, 오디오 15/15, UI 17/17 통과. 자동 획득 OFF/시간 보상 제외/HTTP 실패, 성공 ID 재요청 억제, 활성 및 비활성 채널 재조회, 채널 이동 콜백을 확인했다. content.js/qa/regression.cjs 문법과 git diff --check 통과. 추적 파일 삭제 없음. 자동 테스트는 모의 서버/DOM 검사이며 실제 CHZZK 지급 검증과 구분한다.
+- **빌드**: manifest/package/package-lock 두 위치/ZIP 내부 manifest를 모두 1.1.17로 맞췄다. `dist/chzzk-all-in-one-firefox-v1.1.17.zip` 및 미서명 XPI 생성. 1.1.16의 40개 패키지 항목 유지, 모든 압축 파일과 현재 소스 해시 일치, ZIP/XPI 동일 바이트 확인. 이번 판의 실제 Firefox 설치와 로그인 계정 지급은 확인하지 않았다. 1.1.16의 설치 성공을 1.1.17 실험 결과로 대신 표기하지 않는다.
+- **남은 통나무 문제/우선순위**: (1) DOM 시청 보상은 클릭 직후 구독 등급에서 추정한 100/120/200을 view 로그로 남긴다. 클릭과 실제 지급 성공은 다르므로 성공하지 않은 획득 로그·다음 시간 표시가 생길 수 있다. (2) recordPowerBalance는 저장 성공 전에 기준 잔액을 갱신하므로 저장 실패 후 같은 잔액을 다시 읽으면 누락 로그가 재시도되지 않는다. (3) 여러 탭의 같은 잔액 증가 보완(OTHERS)은 claim ID가 없어서 중복 가능성이 있다. 이 세 경로는 이번 PUT/조회 반복 수정으로 해결됐다고 주장하지 않는다. 실제 서버 지급 신호와 로그를 결합하는 작업을 다음 우선순위로 둔다. 보유량 표시와 자동 받기 기능을 삭제하거나 로그를 임의로 축소하지 않았다.
+- 실제 사용자 확인은 자동 받기 ON에서 보상 지급 뒤 보유량 증가와 로그가 일치하는지, OFF에서는 클릭/PUT이 없는지다. 이 작업에서 방송 접속·외부 검색·사용자 계정 조작·push·서명·업로드는 하지 않았다. 상세 버퍼 제한 및 다른 기능의 미확인 사항은 직전 1.1.16 기록을 유지한다.

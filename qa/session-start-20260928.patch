@@ -1,0 +1,995 @@
+diff --git a/HANDOFF.md b/HANDOFF.md
+index 3bd0cfc..f61fa68 100644
+--- a/HANDOFF.md
++++ b/HANDOFF.md
+@@ -177,3 +177,30 @@
+ - `tools.js`의 기존 녹화 시작 지점에 해상도 비례 `videoBitsPerSecond`를 지정했다. 1080p는 12 Mbps, 720p는 약 5.3 Mbps, 480p는 하한 3 Mbps, 4K는 상한 16 Mbps다. 영상 크기를 아직 모르면 12 Mbps를 요청한다. 오디오는 192 kbps를 요청한다. 기존 MIME 우선순위, Firefox 오디오 모니터·컴프레서 연결, 공유 캡처, 결과 창, 원본 저장/변환 흐름은 그대로 둔다. 선택값은 브라우저가 조정할 수 있고, 실제 인코딩 품질은 보장하지 않는다. 더 큰 파일·CPU 사용량 및 장시간 녹화 메모리 부담을 예상한다.
+ - `test/tools.test.js`에 해상도·상하한값 검사, `qa/regression.cjs --audio`의 녹화 시작 실패 경로에 실제 MediaRecorder 생성자 옵션 확인을 추가했다. QA 목록에 1080p 30초 이상 WebM 원본을 재생 화면과 비교하고 480p 제한 중계를 확인하는 항목을 추가했다. README에는 `원본 WebM`이 방송 전송 파일의 무손실 복사본이 아니라는 점을 설명했다. 사용자의 별도 프로그램 설치 요구는 없다.
+ - 검증: `npm run test:all` 단위 58/58, 기본 회귀 16/16, 오디오 14/14, UI 17/17 통과. 루트 JS 14개와 변경 QA/테스트 문법 통과. `build.ps1`로 1.1.11 ZIP과 미서명 XPI 생성. 이전 1.1.10 ZIP 대비 40개 패키지 항목 모두 유지(추가·삭제 0), ZIP 내부 manifest와 프로젝트 package/lock 버전 모두 1.1.11. `web-ext lint --self-hosted` 오류 0, 기존 경고 2. 실제 Firefox에서 새 WebM의 해상도·프레임·비트레이트·소리, 실제 CHZZK 영상과의 시각 비교, Mozilla 서명은 아직 확인하지 않았다. 기존 승인 1.1.10은 변경되지 않았다.
++
++## 2026-09-25 HLS RAW 녹화 시험 경로, 1.1.12
++
++- 사용자 확인: 1.1.11의 REC WebM 화질은 개선됐으나 재인코딩 없는 방송 원본 저장을 원한다. 출력은 원본 스트림 형식 그대로(.ts 또는 분할 MP4) 선택했다. 기존 REC는 `MediaRecorder`에서 VP8/Opus로 다시 인코딩하므로 비트레이트를 높여도 전송된 H.264/AAC 조각의 바이트 그대로는 될 수 없다.
++- 변경: 기존 `timeshift.js`의 본방송 HLS 탐색을 재사용해 `hlsFragLoaded` 이벤트를 RAW 녹화가 켜진 동안에만 듣는다. 새 fetch/XHR/webRequest 후킹이나 별도 플레이어·폴링은 추가하지 않았다. 주 플레이어가 받은 `main` 조각의 ArrayBuffer를 즉시 복사한다. MPEG-TS는 순서대로 `.ts`, fMP4는 HLS 초기화 조각과 연속 미디어 조각을 `.mp4`로 연결한다. 압축 영상·오디오 페이로드를 재인코딩하지 않는다. 플레이어 도구에 `RAW` 버튼을 별도로 추가했으며 `STOP` 시 해당 파일을 직접 다운로드한다. 기존 `REC`의 오디오 모니터, WebM, 결과 창, MP4/GIF/WebP 변환은 변경하지 않았다.
++- 보호: 광고 플레이어와 팔로잉 hover 플레이어가 아닌 본방송 HLS 인스턴스만 사용한다. 별도 오디오 조각, 암호화, 저지연 부분 조각, 지원하지 않는 형식, 화질/포맷 전환, 시퀀스 누락을 감지하면 중단한다. 방송/플레이어 교체와 탭 종료에도 중단한다. 이미 받은 연속 구간이 있으면 부분 파일 다운로드를 시도하고 사용자에게 이유를 보여준다. 이 방식은 녹화 시작 전에 이미 버퍼에 있던 구간을 저장하지 않으며, 전체 Blob을 탭 메모리에 모으므로 장시간 녹화의 메모리 한계가 있다. 자동 다운로드 요청의 실제 저장 성공은 Firefox 다운로드 목록 확인이 필요하다.
++- 검증(자동): `npm run test:all` 단위 60/60, 기본 회귀 16/16, 오디오 14/14, UI 17/17 통과. RAW 단위 테스트에서 TS/fMP4 바이트 보존, 초기화 조각 포함, 시퀀스 누락 시 부분 파일, 이벤트 리스너 해제를 확인했다. MAIN/isolated 도구 명령의 모의 DOM 흐름에서 본방송 HLS 연결, 원본 다운로드 이름, 종료 응답을 확인했다. 변경 JS 문법 검사와 `git diff --check` 통과. FFmpeg로 생성한 H.264/AAC fMP4 샘플에서 init+조각 연결 파일이 `ffprobe`와 디코딩을 통과했다. 방송 중간부터 결합한 샘플도 디코딩됐지만 시작 시간이 0이 아니고 컨테이너 길이에 앞부분이 포함됐다. 이는 RAW 파일 탐색·길이 표시가 실제 재생 시간과 다를 수 있는 한계다.
++- 빌드: `dist/chzzk-all-in-one-firefox-v1.1.12.zip`과 미서명 `.xpi`를 생성했다. 이전 1.1.11 패키지 대비 항목 40개가 모두 유지됐고 추가·삭제는 없다. manifest/package/package-lock 및 ZIP 내부 manifest 모두 1.1.12, ZIP/XPI SHA-256 동일. `web-ext lint --self-hosted`: 오류 0, 기존 경고 2(CSP WASM, 고정 경로 dynamic import). 공식 AMO 승인본 1.1.10과 별개다.
++- **실제 미확인**: Firefox의 MAIN world에서 CHZZK 플레이어가 `hlsFragLoaded` 이벤트를 이 형태로 내보내는지, 일반 방송 fMP4의 초기화 조각·오디오가 한 파일로 재생되는지, 스포츠 TS의 오디오·화질, 페이지 출처의 Blob 다운로드 허용, 30분 이상 녹화의 메모리, 시작 시간/탐색 UI를 확인하지 못했다. 사용자 Firefox에서 `QA-CHECKLIST.md`의 RAW-01~05를 먼저 확인한다. 실패한다면 받은 파일 형식·재생 오류·대략 길이만 기록하고 토큰이 있는 URL은 공유하지 않는다. 실방송 확인 전 AMO 업로드/릴리스/원격 push는 하지 않았다.
++
++## 2026-09-25 타임머신 과거 버퍼 제한 해제, 1.1.13
++
++- 사용자 요청: 타임머신 버퍼를 거의 무제한으로 보존. 작업 전 `main`/HEAD `dacc340`, 이전 1.1.12 RAW 시험 경로의 미커밋 변경 10개 파일을 확인했다. 해당 변경은 보존하고 그 위에서 수정했다. 현재 Git 원격 반영 및 AMO 승인본은 여전히 1.1.11/1.1.10 상태이며 이 작업에서는 push/업로드하지 않았다.
++- 원인: `timeshift.js`가 TM 활성화 시 본방송 HLS `backBufferLength`를 300초로 지정했다. 이는 Firefox 메모리와 관계없이 확장 코드가 약 5분 이전의 버퍼를 제거하게 만드는 제한이다. `cheese-knife` 원본은 `Infinity`를 사용하고 있었고, hls.js 공식 API 문서도 `Infinity`를 HLS의 과거 버퍼 자동 제거 제한 없음으로 설명한다. 별도의 `maxBufferSize`/`maxBufferLength`/`maxMaxBufferLength`는 전방 버퍼 설정이다.
++- 수정: 기존 `createTimeShift().enable()`의 `backBufferLength`만 `Infinity`로 바꿨다. 전방 버퍼 수치, 타임머신 패널과 탐색 범위, LIVE 복귀, 플레이어 교체와 실패 시 원본 설정 복원, 광고/GRID/화질/REC/RAW/오디오 경로는 변경하지 않았다. 사용자가 TM 패널을 열어 버퍼 유지 모드를 켰을 때 적용되고, LIVE·패널 닫기에서 기존대로 원래 HLS 설정으로 돌아간다. 이미 버려진 과거 구간을 다시 가져오지는 않는다.
++- 검증: `test/timeshift.test.js`에서 활성화 후 값이 `Infinity`임을 확인하도록 바꿨고, 기존 LIVE/닫기/교체 복원 테스트를 유지했다. `npm run test:all` 통과: 단위 60/60, 기본 회귀 16/16, 오디오 14/14, UI 17/17. 변경 JavaScript 및 QA 문법 검사, `git diff --check` 통과. 추적 파일 삭제 없음. 1.1.13 ZIP/XPI를 빌드했으며 이전 1.1.12 패키지의 40개 항목을 모두 유지했다. ZIP 내부 manifest와 루트 manifest/package/lock 버전 모두 1.1.13, ZIP/XPI 바이트 동일. 이전 1.1.12 `web-ext lint`는 오류 0·기존 경고 2였고 이 숫자 설정 변경 뒤에는 반복 실행하지 않았다.
++- 실제 제한과 남은 확인: hls.js가 제거하지 않아도 Firefox의 MSE 메모리 관리가 오래된 구간을 제거할 수 있다. 장시간 켜둘수록 메모리 사용과 버퍼 압박이 늘 수 있다. 실제 Firefox/CHZZK에서 10분 이상 `buffered` 시작·끝 시각, TM 패널의 저장 시간, 재생/소리, LIVE 복귀, 플레이어 교체, 브라우저 메모리를 아직 확인하지 못했다. `QA-CHECKLIST.md` 25절의 수동 항목으로 확인한다. 1.1.13 XPI는 미서명 시험 빌드다.
++
++## 2026-09-25 채팅 글자 크기·통나무 로그·GIF 프로필 정리, 1.1.14
++
++- 작업 전 상태: 작업 루트 `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`, `main` HEAD `dacc340`/원격 `origin/main`. 1.1.12 RAW 및 1.1.13 TM 작업의 미커밋 파일을 보존했다. 이번 변경은 그 위에 적용했으며 Git push·AMO 업로드·서명·릴리스는 하지 않았다.
++- 채팅 원인: 현재 CHZZK 라이브 페이지의 채팅 DOM에서 기존 `[class*='live_chatting_message_text'], [data-message-text]` 선택자는 0개, 새 `aside#aside-chatting [role='log'] [class*='_chatting_message_'] > [class*='_text_']` 선택자는 14개 메시지와 일치했다. 해당 사이트 DOM은 2026-09-25 공개 페이지에서 읽기 전용으로 확인했다. `tools.js`의 기존 스타일 규칙에 새 선택자를 추가하고 이전 선택자는 유지했다. 설정 저장·즉시 반영 흐름, 채팅 입력·닉네임은 변경하지 않았다.
++- 통나무 원인과 수정: 직접 `view` 버튼 클릭과 확장의 PUT 성공 경로만 로그를 작성했다. 직접 사이트 버튼으로 획득하거나 PUT 응답에 유효한 획득 수량이 없으면 성공 후에도 로그가 없을 수 있었다. 기존 `log-power` 잔액 조회 시 같은 채널의 이전 잔액보다 증가한 양에서 그 사이 이미 기록한 양을 빼고, 남은 양만 `OTHERS`(기타) 로그로 저장한다. 채널 첫 조회·잔액 감소·비활성 상태/재활성 직후는 증가 기록으로 보지 않는다. 새 폴링/API 패치는 없고 기존 30초 조회를 재사용한다. 기존 view/FOLLOW/prediction 상세 로그와 저장된 기록은 유지한다. 서버의 잔액이 다른 이유로 증가하면 보완 기록은 `기타`로 표시되며 구체적인 지급 종류는 추정하지 않는다.
++- 사용자 요청에 따라 움직이는 GIF 프로필 자동 재생 설정·URL 변경 코드·전용 MutationObserver를 제거했다. `movingGifProfile`의 기존 저장값은 삭제하지 않았고 비활성 데이터로 남는다. 파워 배지, 보유량, 자동 획득, 로그 창, 프로필 기본 표시 등 다른 경로는 유지했다.
++- 검증: `npm run test:all` 단위 60/60, 기본 회귀 18/18, 오디오 14/14, UI 17/17 통과. 이후 비활성 전환에 관한 작은 가드를 추가해 기본 회귀 18/18을 다시 통과했다. `content.js`, `tools.js`, `popup.js`, `qa/regression.cjs` 문법 검사와 `git diff --check` 통과. `qa/regression.cjs`는 새/기존 채팅 선택자와 잔액 증가, 기존 로그 공제, 채널 변경·감소·비활성 제외를 확인한다. 추적 파일 삭제 없음.
++- 빌드: `dist/chzzk-all-in-one-firefox-v1.1.14.zip` 및 동일 바이트 미서명 `.xpi` 생성. manifest/package/lockfile 루트/lock 루트 패키지/ZIP 내부 manifest 버전 모두 1.1.14. 1.1.13 패키지의 40개 항목 모두 유지했다. 기존 빌드·Git 이력·사용자 데이터는 보존했다.
++- 실제 미확인: 현재 사이트의 메시지 DOM 선택자는 확인했지만 수정한 확장을 Firefox에 설치해 글자 크기를 바꾸는 동작은 테스트하지 않았다. 로그인 계정의 통나무 실제 획득·잔액 증가·로그 창 반영, 수동 획득의 기록 종류, 여러 탭이 같은 채널을 볼 때 중복 기록 여부는 Firefox/실제 CHZZK에서 확인이 필요하다. `QA-CHECKLIST.md`의 EXT-06, CLAIM-10/10A, POWER-08을 사용한다.
+diff --git a/QA-CHECKLIST.md b/QA-CHECKLIST.md
+index ebb2750..3cbd937 100644
+--- a/QA-CHECKLIST.md
++++ b/QA-CHECKLIST.md
+@@ -100,7 +100,7 @@ CHZZK URL / 채널 ID:
+ 
+ ## 6. 플레이어 공통 UI
+ 
+-- [ ] UI-01 라이브 플레이어 오른쪽 하단에 `REC`, `SHOT`, `Q`, `TM` 버튼이 한 세트만 생기고, 의도적으로 비활성화한 확장 `PIP` 버튼은 생기지 않는다.
++- [ ] UI-01 라이브 플레이어 오른쪽 하단에 `REC`, `RAW`, `SHOT`, `Q`, `TM` 버튼이 한 세트만 생기고, 의도적으로 비활성화한 확장 `PIP` 버튼은 생기지 않는다.
+ - [ ] UI-02 플레이어 DOM이 다시 그려져도 버튼 세트가 중복 생성되지 않는다.
+ - [ ] UI-03 각 기능 토글 OFF 시 해당 버튼이 즉시 사라지고 ON 시 다시 생긴다.
+ - [ ] UI-04 버튼 tooltip/title/aria-label이 키보드와 스크린리더에서 식별 가능하다.
+@@ -131,6 +131,7 @@ CHZZK URL / 채널 ID:
+ - [ ] REC-04 **Firefox에서 녹화 중 방송 소리가 계속 들린다.**
+ - [ ] REC-05 플레이어 볼륨 변경이 녹화 중 청취 음량에 즉시 반영된다.
+ - [ ] REC-06 음소거하면 모니터 소리가 0이 되고 해제하면 돌아온다.
++- [ ] REC-06A 음소거 상태에서 10초 이상 REC한 WebM 결과에는 원래 방송 소리가 남고, 시청 중 모니터 소리만 0이다. 볼륨 0도 확인한다.
+ - [ ] REC-07 녹화 결과 파일에도 영상과 오디오가 모두 존재하고 싱크가 맞는다.
+ - [ ] REC-08 오디오 트랙이 없는 방송은 `오디오 없이` 안내 후 영상만 정상 녹화한다.
+ - [ ] REC-09 `STOP` 클릭 후 버튼과 타이머가 원래 상태로 복구된다.
+@@ -140,6 +141,11 @@ CHZZK URL / 채널 ID:
+ - [ ] REC-13 방송 종료, 채널 이동, 탭 닫기, 네트워크 끊김 도중 녹화 중지 동작을 확인한다.
+ - [ ] REC-14 두 라이브 탭에서 동시에 녹화를 시도한다. 현재 설계는 pending 결과 1개 제한이므로 덮어쓰기 여부를 P1로 기록한다.
+ - [ ] REC-15 1080p 방송에서 30초 이상 REC한 WebM 원본의 해상도·움직임·오디오를 재생 화면과 비교한다. 480p 제한 중계에서도 파일 크기와 재생 상태를 확인한다.
++- [ ] RAW-01 일반 라이브에서 `RAW` → 30초 이상 시청 → `STOP` 후 `.mp4` 또는 `.ts` 파일이 한 개 내려받아지고 영상·오디오가 실제 재생된다.
++- [ ] RAW-02 네트워크 탭에서 수신한 조각 형식과 저장 확장자, 실제 화면 화질과 저장 영상 해상도를 비교한다. 광고 조각·팔로잉 미리보기 영상이 섞이지 않는다.
++- [ ] RAW-03 제한 중계의 TS 조각을 `.ts`로 저장하고, 서버가 제공한 화질 이상이라고 표시하지 않는다.
++- [ ] RAW-04 화질/채널/플레이어 전환과 조각 누락에서 오류 안내와 부분 파일 다운로드를 확인한다. 기존 REC, 오디오 컴프레서, TM 및 재생이 계속 동작한다.
++- [ ] RAW-05 10분 이상 녹화에서 메모리 증가와 다운로드 성공을 기록한다. RAW는 기존 버퍼를 소급 저장하지 않는다.
+ 
+ ## 9. 녹화 결과·변환
+ 
+@@ -222,7 +228,7 @@ CHZZK URL / 채널 ID:
+ - [ ] POWER-05A 같은 방송에서 비활성 상태가 다시 활성화되면 잔액 조회와 자동 획득 검사가 재개된다.
+ - [ ] POWER-06 `개수 요약` OFF는 전체 숫자, ON은 축약 숫자를 표시한다.
+ - [ ] POWER-07 `예상 획득 시간` ON 시 가장 최근 view 로그 + 1시간까지 남은 시간이 표시되고, 기록이 없거나 기한이 지나면 확인 필요로 표시된다.
+-- [ ] POWER-08 `움직이는 GIF 프로필` ON 시 프로필 URL의 `_na` 타입만 제거되고 unrelated URL은 바뀌지 않는다.
++- [ ] POWER-08 움직이는 GIF 프로필 자동 재생 설정은 제거되고, 채팅/프로필 이미지는 사이트 기본 동작을 따른다.
+ - [ ] POWER-09 라이브 채널 SPA 이동 후 이전 채널 상태가 남지 않고 새 채널 잔액으로 바뀐다.
+ - [ ] POWER-10 백그라운드 탭에서도 visibility/focus 우회로 시청 판정이 유지된다.
+ - [ ] POWER-11 visibility/focus 오버라이드가 채팅, 키보드, PIP, 플레이어 단축키를 망가뜨리지 않는지 회귀 검사한다.
+@@ -239,6 +245,7 @@ CHZZK URL / 채널 ID:
+ - [ ] CLAIM-08 follow 보상이 없거나 API가 실패할 때 5초 폴러가 무기한 남는지 장기 관찰한다. 남으면 P2 버그로 기록한다.
+ - [ ] CLAIM-09 로그아웃, 권한 오류, 비활성 채널에서 자동 PUT/클릭 루프가 발생하지 않는다.
+ - [ ] CLAIM-10 로그 창을 연 채 새 파워를 얻으면 새 로그와 통계가 갱신되고, 로그 저장 실패가 다음 시도를 막지 않는다.
++- [ ] CLAIM-10A 사이트 버튼으로 직접 받거나 획득 API가 수량을 돌려주지 않아도, 다음 잔액 조회에서 확인된 미기록 증가분이 `기타` 로그로 한 번만 남는다.
+ - [ ] CLAIM-10 여러 라이브 탭을 동시에 열었을 때 중복 claim/중복 로그가 생기지 않는다.
+ 
+ ## 16. 승부예측 추적
+@@ -379,7 +386,9 @@ CHZZK URL / 채널 ID:
+ - [ ] 30초 뒤로 간 후 1분 이상 강제로 실시간으로 복귀하지 않는다.
+ - [ ] LIVE 클릭 후 현재 방송으로 돌아가며 버퍼 설정과 동기화 함수를 복원한다.
+ - [ ] 패널 닫기·채널 전환·플레이어 교체 후 이전 플레이어 패치가 남지 않는다.
+-- [ ] 5분 이상 켜두고 메모리와 실제 버퍼 길이를 관찰한다. 무제한 보관을 보장하지 않는다.
++- [ ] TM을 10분 이상 켜두고 시작/종료 `buffered` 시각과 메모리를 기록한다. 300초 지점에서 HLS가 과거 버퍼를 잘라내지 않는지 확인하고, Firefox 자체 버퍼 제거가 있으면 그 시점과 재생 회복을 기록한다.
++- [ ] TM 패널을 열지 않고 본방송을 6분 이상 일시정지한다. 화면 `currentTime`은 멈추고 `buffered.end`는 계속 전진하는지 확인한다. 다시 재생하면 멈춘 지점부터 시작하고, LIVE를 누르면 현재 시점으로 이동한다.
++- [ ] 일시정지를 길게 유지할 때 Firefox 메모리/MSE가 과거 조각을 제거하거나 HLS가 버퍼 한도를 낮추면 시점과 재생 오류 여부를 기록한다.
+ - [ ] HLS 연결 실패 시 오류와 재시도 버튼을 표시하며 일반 라이브 재생은 유지한다.
+ 
+ ## 26. 1.0.7 화질/GRID 회귀
+diff --git a/README.md b/README.md
+index 1fe6688..eb6921a 100644
+--- a/README.md
++++ b/README.md
+@@ -6,7 +6,7 @@ Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
+ 
+ - GRID/P2P 우회, 1080p 최고 화질 선택 (서버에 1080p가 없으면 최고 가용 화질)
+ - 식별 가능한 광고 미디어 건너뛰기 및 광고 차단 경고 팝업 숨김 (실방송 검증 필요)
+-- 녹화 중 청취, 녹화 결과 미리보기, WebM 원본 및 MP4/GIF/WebP 변환·자르기·분할
++- 녹화 중 청취, 녹화 결과 미리보기, WebM 원본 및 MP4/GIF/WebP 변환·자르기·분할, 별도 RAW 조각 저장
+ - 스크린샷 미리보기·저장 (확장 PIP 버튼은 의도적으로 비활성화, Firefox 기본 PiP 사용)
+ - 통나무 파워 자동 획득·보유량·로그·승부예측 기록
+ - 확인 가능한 블라인드 채팅 원문 표시
+@@ -17,6 +17,8 @@ Firefox 우선으로 만든 비공식 CHZZK 통합 확장 프로그램입니다.
+ 
+ REC의 `원본 WebM`은 CHZZK 전송 파일의 무손실 복사본이 아니라 Firefox MediaRecorder가 재인코딩한 결과입니다. 1.1.11부터 영상 해상도에 따라 목표 비트레이트를 높여 기존 기본값의 뭉개짐을 줄입니다. 녹화 파일 크기와 CPU 사용량이 늘 수 있으며, 방송 원본과 바이트 단위로 같은 품질은 보장하지 않습니다.
+ 
++1.1.12의 라이브 플레이어 `RAW`는 별도 저장 방식입니다. 본방송 HLS 플레이어가 새로 받는 압축 조각을 복사해, TS 방송은 `.ts`, 분할 MP4 방송은 초기화 조각을 포함한 `.mp4`로 직접 다운로드합니다. 다시 인코딩하지 않으므로 수신한 화질·코덱을 유지하지만, CHZZK가 제공하지 않는 고화질을 만들어 내지는 않습니다. 기존 `REC`와 결과 창·변환기는 그대로 사용할 수 있습니다. RAW는 기존 버퍼의 과거 구간을 소급 저장하지 않으며, 오디오가 별도 트랙이거나 암호화·저지연 부분 조각·화질 전환·조각 누락이 감지되면 중단하고 받은 구간의 부분 파일 다운로드를 요청합니다. 장시간 녹화는 탭 메모리를 많이 사용합니다. **Firefox와 실제 CHZZK 방송에서 RAW 파일의 오디오·재생·다운로드는 아직 검증 전입니다.**
++
+ ## Firefox 설치
+ 
+ `build.ps1`이 만드는 `.xpi`는 ZIP의 복사본인 **미서명 개발용 파일**입니다. 일반 Firefox의 영구 설치에는 Mozilla 서명본이 필요합니다. 서명 전에는 `about:debugging#/runtime/this-firefox`의 **임시 부가 기능 로드**에서 `manifest.json`을 선택해 테스트할 수 있습니다.
+@@ -25,7 +27,7 @@ REC의 `원본 WebM`은 CHZZK 전송 파일의 무손실 복사본이 아니라
+ 
+ 1. 평소 쓰는 브라우저에서 [AMO 개발자 허브](https://addons.mozilla.org/developers/)에 Mozilla 계정을 만들고 로그인합니다. 일반 Firefox용 서명에는 계정이 필요합니다. Codex 브라우저에서 로그인할 필요는 없습니다.
+ 2. 이미 1.1.10을 승인받았다면 **기존 부가 기능 관리 페이지의 새 버전 업로드**를 선택합니다. 처음 제출하는 경우에만 **새 부가 기능 제출** → **On your own(직접 배포)**을 선택합니다.
+-3. 이 폴더의 `dist/chzzk-all-in-one-firefox-v1.1.11.zip`을 업로드하고 화면의 검증·심사 절차를 마칩니다. ZIP은 이미 만들어져 있습니다. 이후 소스를 수정했다면 `.\build.ps1 -ZipOnly`로 새 ZIP을 만듭니다.
++3. 실제 방송에서 확인한 버전의 `dist/chzzk-all-in-one-firefox-v<버전>.zip`을 업로드하고 화면의 검증·심사 절차를 마칩니다. 이후 소스를 수정했다면 `.\build.ps1 -ZipOnly`로 새 ZIP을 만듭니다.
+ 4. [AMO 버전 페이지에서 Mozilla가 서명한 XPI를 내려받습니다](https://extensionworkshop.com/documentation/publish/submitting-an-add-on/). 제출 즉시 발급되지 않을 수 있으며, 검증 오류가 있으면 AMO의 오류 내용을 확인해야 합니다.
+ 
+ 반복 서명이 필요할 때만 API 키를 발급해 `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET` 환경 변수를 설정하고 `.\sign.ps1`을 실행할 수 있습니다. 이 스크립트는 패키지를 Mozilla에 제출하고 서명본을 `dist/signed-v<버전>/`에 받습니다. 키는 저장소나 패키지에 넣지 않습니다. 스크립트 실행에는 Node.js 22 이상과 npm이 필요하지만 Firefox 사용 시 별도 프로그램은 필요 없습니다.
+@@ -42,7 +44,9 @@ blob/worker 요청의 문서 출처 판정, 중첩·객체형 재생 JSON 및 
+ 
+ cheese-knife의 `setSeeking`/`patchHls` 구조에 맞춰 MAIN world에서 실제 HLS 컨트롤러를 찾고, 과거 버퍼 보존과 강제 라이브 복귀 억제를 함께 적용합니다. TM 패널·방향키 모두 동일한 `buffered` 탐색 경로를 사용합니다. LIVE·패널 닫기·채널/플레이어 교체 시 원래 설정과 동기화 함수를 복원합니다.
+ 
+-원본과 의도적으로 다른 점: 무제한 과거 버퍼/1,000배 한도 대신 과거 보존 목표를 300초, `maxBufferSize`를 기존 값과 100 MB 중 큰 값으로 설정합니다. 실제 보존 길이는 메모리와 플레이어 동작에 따라 더 짧을 수 있습니다. 연결 실패 시 성공으로 표시하지 않으며 원본 재생을 유지합니다. 이미 버려진 과거 영상을 되살리는 서버 DVR 기능은 아닙니다. **로직 회귀 테스트와 별개로 로그인된 Firefox에서 실제 작동 확인은 아직 필요합니다.**
++1.1.13부터 TM 패널이 활성화된 동안 HLS의 과거 버퍼 자동 제거 제한을 `Infinity`로 설정합니다. 기존의 전방 버퍼 설정, 탐색, LIVE 복귀 및 원래 설정 복원은 유지합니다. Firefox가 메모리 압박으로 버퍼를 직접 제거할 수 있으므로 실제 보존 길이는 무제한으로 보장되지 않습니다. 이미 버려진 과거 영상을 되살리는 서버 DVR 기능도 아닙니다. **로직 회귀 테스트와 별개로 로그인된 Firefox에서 실제 작동 확인은 아직 필요합니다.**
++
++1.1.15부터 이미 재생 중이던 본방송을 일시정지하면 TM 패널 없이도 HLS 버퍼 유지 모드에 들어갑니다. 재생 위치는 멈춘 채 앞쪽 버퍼 목표를 1시간으로 높이고 중단된 HLS 조각 로딩을 재개합니다. 재생을 다시 시작하면 앞쪽 버퍼 목표를 되돌립니다. 실제 보존 길이는 Firefox의 메모리·MSE 한도에 좌우되며, hls.js가 메모리 오류를 회복하려고 목표를 낮출 수 있습니다. REC는 시청 음소거와 독립적인 캡처 스트림을 녹화하고 시청용 모니터만 음소거합니다. 실제 Firefox 녹화 파일의 소리는 수동 확인이 필요합니다.
+ 
+ ## 1.0.5 수정 범위와 미확인 사항
+ 
+diff --git a/content.js b/content.js
+index f15daf6..85c5792 100644
+--- a/content.js
++++ b/content.js
+@@ -11,7 +11,6 @@ const pendingClaims = new Set();
+ let powerClickBusy = false;
+ let lastViewChannelId = null;
+ let clockToggle = false;
+-let movingGifProfileToggle = false; // 움직이는 gif 프로필 토글
+ let lastViewLogTimestampMs = null; // 최근 view 로그 기록 시각 (메모리)
+ let lastClockNode = null; // 시계 UI 노드 참조
+ let powerSummaryToggle = false; // 통나무 개수 요약 표시 토글
+@@ -42,64 +41,6 @@ function safeImageUrl(value, fallback) {
+     }
+ }
+ 
+-// gif 프로필 URL에서 type 파라미터의 "_na" 만 제거
+-function normalizeGifProfileUrl(url) {
+-    if (!url || typeof url !== "string") return url;
+-    try {
+-        const u = new URL(url, location.href);
+-        const type = u.searchParams.get("type");
+-        if (!type || !type.endsWith("_na")) return url;
+-        u.searchParams.set("type", type.slice(0, -3)); // "_na" 제거
+-        return u.toString();
+-    } catch (e) {
+-        // URL 파싱이 안 되면 단순 치환은 위험하니 그대로 둔다
+-        return url;
+-    }
+-}
+-
+-// 문서 내 이미지들에 움직이는 gif 프로필 적용
+-function applyMovingGifProfileToDocument(root = document) {
+-    if (!movingGifProfileToggle || !root) return;
+-    try {
+-        const imgs = root.querySelectorAll
+-            ? root.querySelectorAll("img[src*='gif?type='], img[src*='.gif?type=']")
+-            : [];
+-        imgs.forEach((img) => {
+-            if (!img || !img.src) return;
+-            const newSrc = normalizeGifProfileUrl(img.src);
+-            if (newSrc && newSrc !== img.src) {
+-                img.src = newSrc;
+-            }
+-        });
+-    } catch (_) {}
+-}
+-
+-// DOM 변경 시에도 신규 이미지에 적용
+-let movingGifProfileObserver = null;
+-function ensureMovingGifProfileObserver() {
+-    if (movingGifProfileObserver || typeof MutationObserver === "undefined") return;
+-    movingGifProfileObserver = new MutationObserver((mutations) => {
+-        if (!movingGifProfileToggle) return;
+-        mutations.forEach((m) => {
+-            m.addedNodes &&
+-                m.addedNodes.forEach((node) => {
+-                    if (!(node instanceof HTMLElement)) return;
+-                    if (node.tagName === "IMG") {
+-                        applyMovingGifProfileToDocument(node.parentElement || document);
+-                    } else {
+-                        applyMovingGifProfileToDocument(node);
+-                    }
+-                });
+-        });
+-    });
+-    try {
+-        movingGifProfileObserver.observe(document.documentElement, {
+-            childList: true,
+-            subtree: true,
+-        });
+-    } catch (_) {}
+-}
+-
+ // 현재 테마가 다크인지 여부 (html 태그에 theme_dark 클래스 존재 여부)
+ function isDarkTheme() {
+     try {
+@@ -291,7 +232,7 @@ async function savePowerLog(channelId, amount, method, testAmount = null, extra
+ }
+ 
+ chrome.storage.sync.get(
+-    ["badge", "clockToggle", "movingGifProfile", "powerSummary", "powerAcquisition"],
++    ["badge", "clockToggle", "powerSummary", "powerAcquisition"],
+     (r) => {
+     if (r.badge == undefined) {
+         r.badge = true;
+@@ -300,10 +241,6 @@ chrome.storage.sync.get(
+     if (r.clockToggle == undefined) {
+         r.clockToggle = false;
+         chrome.storage.sync.set({ clockToggle: false });
+-    }
+-    if (r.movingGifProfile == undefined) {
+-        r.movingGifProfile = false;
+-        chrome.storage.sync.set({ movingGifProfile: false });
+     }
+         if (r.powerSummary == undefined) {
+             r.powerSummary = false;
+@@ -313,12 +250,7 @@ chrome.storage.sync.get(
+     if (r.powerAcquisition === undefined) chrome.storage.sync.set({ powerAcquisition: powerAcquisitionEnabled });
+     badgeToggle = r.badge;
+     clockToggle = r.clockToggle;
+-    movingGifProfileToggle = !!r.movingGifProfile;
+         powerSummaryToggle = !!r.powerSummary;
+-    if (movingGifProfileToggle) {
+-        applyMovingGifProfileToDocument();
+-    }
+-    ensureMovingGifProfileObserver();
+     }
+ );
+ 
+@@ -342,11 +274,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+             // 시계가 없고 clockToggle이 true인 경우 생성
+             updateClockDisplay();
+         }
+-    } else if (request.action === "updateMovingGifProfileToggle") {
+-        movingGifProfileToggle = !!request.movingGifProfileToggle;
+-        if (movingGifProfileToggle) {
+-            applyMovingGifProfileToDocument();
+-        }
+     } else if (request.action === "updatePowerSummaryToggle") {
+         powerSummaryToggle = !!request.powerSummaryToggle;
+         // 즉시 뱃지/시계에 반영
+@@ -377,7 +304,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
+     if (changes.badge) badgeToggle = changes.badge.newValue !== false;
+     if (changes.clockToggle) clockToggle = !!changes.clockToggle.newValue;
+     if (changes.powerSummary) powerSummaryToggle = !!changes.powerSummary.newValue;
+-    if (changes.movingGifProfile) movingGifProfileToggle = !!changes.movingGifProfile.newValue;
+ });
+ 
+ // PerformanceObserver 기반 네트워크 감지
+@@ -472,6 +398,26 @@ function getChannelIdFromUrl() {
+ 
+ // log-power API에서 파워 개수 받아오기 및 갱신
+ let cachedPowerAmount = null;
++let cachedPowerChannelId = null;
++let cachedPowerObservedAt = 0;
++async function recordPowerBalance(channelId, amount, trackIncrease = true) {
++    const previous = cachedPowerChannelId === channelId ? cachedPowerAmount : null;
++    const previousAt = cachedPowerObservedAt;
++    cachedPowerChannelId = channelId;
++    cachedPowerAmount = amount;
++    cachedPowerObservedAt = Date.now();
++    if (!trackIncrease || !powerAcquisitionEnabled || !Number.isFinite(previous) || !Number.isFinite(amount) || amount <= previous) return;
++    try {
++        const { powerLogs = [] } = await chrome.storage.local.get("powerLogs");
++        const alreadyLogged = powerLogs.filter(log => log.channelId === channelId &&
++            Number.isFinite(log.amount) && log.amount > 0 && Date.parse(log.timestamp) >= previousAt)
++            .reduce((sum, log) => sum + log.amount, 0);
++        const unlogged = amount - previous - alreadyLogged;
++        if (unlogged > 0) await savePowerLog(channelId, unlogged, "OTHERS");
++    } catch (error) {
++        console.warn("[치지직 통나무 파워 자동 획득] 잔액 증가 로그 실패:", error);
++    }
++}
+ async function fetchAndUpdatePowerAmount() {
+     if (!isLivePage()) return;
+     const channelId = getChannelIdFromUrl();
+@@ -500,6 +446,7 @@ async function fetchAndUpdatePowerAmount() {
+         }
+     } catch (e) { return; }
+     if (channelId !== getChannelIdFromUrl()) return;
++    await recordPowerBalance(channelId, amount, active !== false && !isChannelInactive);
+     if (active === false) {
+         isChannelInactive = true; // 비활성화 상태 고정
+         if (claims.length > 0) {
+@@ -511,7 +458,6 @@ async function fetchAndUpdatePowerAmount() {
+         } else {
+             console.log("[치지직 통나무 파워 자동 획득] 비활성화 된 채널");
+         }
+-        cachedPowerAmount = amount;
+         // 4초간 badge 표시 반복 갱신
+         let inactiveBadgeTries = 0;
+         const inactiveBadgeTimer = setInterval(() => {
+@@ -533,7 +479,6 @@ async function fetchAndUpdatePowerAmount() {
+     const wasInactive = isChannelInactive;
+     isChannelInactive = false; // 활성화 상태로 복귀 시 해제
+     if (wasInactive && !powerBadgeDomPoller) startPowerBadgeDomPoller();
+-    cachedPowerAmount = amount;
+     updatePowerCountBadge(amount, false);
+     if (claims.length > 0) {
+         console.log("[치지직 통나무 파워 자동 획득] claims:", claims);
+diff --git a/index.html b/index.html
+index 067672d..5dcdae6 100644
+--- a/index.html
++++ b/index.html
+@@ -90,7 +90,6 @@
+     <label>통나무 배지 표시 <input id="badgeToggle" type="checkbox"></label>
+     <label>예상 획득 시간 표시 <input id="clockToggle" type="checkbox"></label>
+     <label>획득 요약 리포트 표시 <input id="powerSummaryToggle" type="checkbox"></label>
+-    <label>움직이는 프로필 (GIF) 재생 <input id="movingGifProfileToggle" type="checkbox"></label>
+   </div>
+   
+   <div id="nextPowerTime">다음 통나무 파워 획득: <span id="timeDisplay">계산 중…</span></div>
+diff --git a/manifest.json b/manifest.json
+index 9c403a4..fbb2879 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -2,7 +2,7 @@
+   "manifest_version": 3,
+   "name": "CHZZK All-in-One by hanbi",
+   "short_name": "CHZZK AIO",
+-  "version": "1.1.11",
++  "version": "1.1.15",
+   "description": "hanbi의 CHZZK 통합 도구: GRID/P2P·광고 우회, 최고 화질, 팔로잉 방송 알림, 녹화·변환·스크린샷, 통나무 자동 획득, 선명도 조절.",
+   "author": "hanbi",
+   "browser_specific_settings": {
+diff --git a/package-lock.json b/package-lock.json
+index 7f774a9..16be395 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,12 +1,12 @@
+ {
+   "name": "chzzk-all-in-one",
+-  "version": "1.1.11",
++  "version": "1.1.15",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+       "name": "chzzk-all-in-one",
+-      "version": "1.1.11",
++      "version": "1.1.15",
+       "license": "GPL-3.0-or-later",
+       "devDependencies": {
+         "@ffmpeg/core": "^0.12.10",
+diff --git a/package.json b/package.json
+index 2a57ea1..d25448e 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "chzzk-all-in-one",
+-  "version": "1.1.11",
++  "version": "1.1.15",
+   "private": true,
+   "author": "hanbi",
+   "license": "GPL-3.0-or-later",
+diff --git a/popup.js b/popup.js
+index 9020dc7..3fabdb2 100644
+--- a/popup.js
++++ b/popup.js
+@@ -22,7 +22,6 @@ const powerSettings = {
+   badgeToggle: ["badge", "updateBadgeToggle", "badgeToggle", true],
+   clockToggle: ["clockToggle", "updateClockToggle", "clockToggle", false],
+   powerSummaryToggle: ["powerSummary", "updatePowerSummaryToggle", "powerSummaryToggle", false],
+-  movingGifProfileToggle: ["movingGifProfile", "updateMovingGifProfileToggle", "movingGifProfileToggle", false],
+ };
+ 
+ async function notifyTab(message) {
+diff --git a/qa/regression.cjs b/qa/regression.cjs
+index ae3f41c..0c0919a 100644
+--- a/qa/regression.cjs
++++ b/qa/regression.cjs
+@@ -65,6 +65,7 @@ async function main() {
+       console: quiet, isLivePage: () => true, getChannelIdFromUrl: () => channelId,
+       fetch: async () => ({ ok: true, json: async () => ({ content: { amount: 100, claims: [], active } }) }),
+       updatePowerCountBadge: (...args) => updates.push(args),
++      recordPowerBalance: async () => {},
+       setInterval: () => 9, clearInterval: id => cleared.push(id),
+       powerBadgeDomPoller: 1, powerCountInterval: 2, isChannelInactive: false,
+       startPowerBadgeDomPoller: () => { restarts++; ctx.powerBadgeDomPoller = 3; },
+@@ -131,6 +132,41 @@ async function main() {
+     await Promise.all([save('a', 100, 'view'), save('b', 100, 'view')]);
+     assert.equal(stored.length, 2);
+   });
++  await check('POWER-BALANCE-LOG: only an unexplained increase creates a fallback entry', async () => {
++    const saved = [];
++    let powerLogs = [];
++    const ctx = vm.createContext({
++      Date, Number, console: quiet, powerAcquisitionEnabled: true,
++      cachedPowerAmount: null, cachedPowerChannelId: null, cachedPowerObservedAt: 0,
++      chrome: { storage: { local: { get: async () => ({ powerLogs }) } } },
++      savePowerLog: async (...args) => { saved.push(args); return true; },
++    });
++    vm.runInContext(extract('content.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'recordPowerBalance'), ctx);
++    await ctx.recordPowerBalance('a', 100);
++    assert.equal(saved.length, 0);
++    await ctx.recordPowerBalance('a', 200);
++    assert.deepEqual(Array.from(saved[0].slice(0, 3)), ['a', 100, 'OTHERS']);
++    powerLogs = [{ channelId: 'a', amount: 50, timestamp: new Date().toISOString() }];
++    await ctx.recordPowerBalance('a', 300);
++    assert.equal(saved[1][1], 50);
++    await ctx.recordPowerBalance('b', 800);
++    assert.equal(saved.length, 2);
++    await ctx.recordPowerBalance('b', 700);
++    assert.equal(saved.length, 2);
++    await ctx.recordPowerBalance('b', 900, false);
++    assert.equal(saved.length, 2);
++  });
++  await check('CHAT-FONT: current and legacy chat message selectors are both styled', () => {
++    const style = { textContent: '' };
++    const apply = func('tools.js', 'applyChatFeatures', {
++      document: { getElementById: () => style },
++      features: { hideDonation: false, chatFontSizeEnabled: true }, trendOptions: { chatFontSize: 20 },
++    });
++    apply();
++    assert.match(style.textContent, /aside#aside-chatting \[role='log'\] \[class\*='_chatting_message_'\] > \[class\*='_text_'\]/);
++    assert.match(style.textContent, /live_chatting_message_text/);
++    assert.match(style.textContent, /font-size: 20px !important/);
++  });
+   const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
+   const api = {
+     runtime: { onMessage: event(), onInstalled: event(), onStartup: event(), getPlatformInfo: async () => ({ os: 'win' }), getURL: name => name },
+@@ -294,6 +330,23 @@ async function audioMain() {
+     source.muted = false; listeners.get('volumechange')(); assert.equal(gain.gain.value, 0.25);
+     cleanup(); assert.equal(listeners.size, 0); assert.equal(input.outputs.length, 0); assert.equal(gain.outputs.length, 0); assert.equal(p.contexts[0].closes, 1);
+   });
++  await check('AUDIO-MUTED-REC: player mute does not remove captured audio', () => {
++    const audio = { enabled: true }, video = { enabled: true };
++    const stream = { getAudioTracks: () => [audio], getVideoTracks: () => [video], getTracks: () => [audio, video] };
++    const source = { muted: true, volume: 0, mozCaptureStream: () => stream };
++    let monitored = false;
++    const ctx = vm.createContext({
++      sharedCapture: null,
++      captureReusePlan: require(path.join(repo, 'tools.js')).captureReusePlan,
++      monitorFirefoxAudio(media, captured) { monitored = media === source && captured === stream; return () => {}; },
++    });
++    vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'acquireCapture'), ctx);
++    const result = ctx.acquireCapture(source);
++    assert.equal(result.stream, stream);
++    assert.equal(stream.getAudioTracks()[0].enabled, true);
++    assert.equal(source.muted, true);
++    assert.equal(monitored, true);
++  });
+   await check('AUDIO-MONITOR-COMP: captured audio follows COMP toggle', () => {
+     const p = audioProbe(), source = { muted: false, volume: 1, addEventListener() {}, removeEventListener() {} };
+     p.ctx.compressorEnabled = true;
+@@ -550,8 +603,8 @@ async function uiMain() {
+     let root = null;
+     const target = { prepend(element) { root = element; element.parentElement = target; } };
+     const ctx = vm.createContext({
+-      recording: { recorder: { state: 'recording' } }, features: { recorder: true, screenshot: true }, video: () => ({}), isLive: () => true,
+-      button: (label, text, action) => ({ label, textContent: text, action, classList: { add() {} } }), screenshot() {}, showTimeMachine() {}, toggleRecording() {},
++      recording: { recorder: { state: 'recording' } }, rawRecording: null, features: { recorder: true, screenshot: true }, video: () => ({}), isLive: () => true,
++      button: (label, text, action) => ({ label, textContent: text, action, classList: { add() {} } }), screenshot() {}, showTimeMachine() {}, toggleRecording() {}, toggleRawRecording() {},
+       document: {
+         querySelector: () => target, getElementById: () => root,
+         createElement: () => ({ dataset: {}, children: [], appendChild(el) { this.children.push(el); }, remove() { if (root === this) root = null; } }),
+@@ -560,6 +613,8 @@ async function uiMain() {
+     vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'ensureTools'), ctx);
+     ctx.ensureTools(); root.children[0].textContent = 'STOP';
+     ctx.features.screenshot = false; ctx.ensureTools(); assert.equal(root.children[0].textContent, 'STOP');
++    ctx.features.recorder = false; ctx.rawRecording = { source: {} }; ctx.ensureTools(); assert.equal(root.children[0].textContent, 'STOP');
++    ctx.rawRecording = null; ctx.ensureTools(); assert.equal(root.children.some(item => item.label === '방송 원본 조각 녹화 시작/저장'), false);
+   });
+   await check('TREND-FALLBACK: below-threshold lives still show the popular fallback', () => {
+     const { selectTrendStreams } = require(path.join(repo, 'tools.js'));
+diff --git a/test/timeshift.test.js b/test/timeshift.test.js
+index a2d572f..2ae3d98 100644
+--- a/test/timeshift.test.js
++++ b/test/timeshift.test.js
+@@ -1,6 +1,6 @@
+ const test = require("node:test");
+ const assert = require("node:assert/strict");
+-const { createTimeShift, findHls, bufferedPosition, mediaCandidates, install } = require("../timeshift.js");
++const { createTimeShift, createRawRecorder, findHls, bufferedPosition, mediaCandidates, install } = require("../timeshift.js");
+ test("광고 video가 남아 있어도 재생 가능한 본편 video를 고른다", () => {
+   const ad = { videoWidth: 1920, videoHeight: 1080, readyState: 4, closest: () => ({}) };
+   const live = { videoWidth: 1920, videoHeight: 1080, readyState: 4, closest: () => null };
+@@ -17,7 +17,7 @@ test("원본 방식으로 buffered 내 탐색하고 실시간 강제 복귀를 
+   const control = createTimeShift();
+   assert.equal(control.run("seek", hls, media, 60).active, true);
+   assert.equal(media.currentTime, 60);
+-  assert.equal(hls.config.backBufferLength, 300);
++  assert.equal(hls.config.backBufferLength, Infinity);
+   hls.streamController.synchronizeToLiveEdge({});
+   assert.equal(count(), 0);
+   media.currentTime = 0; // Evicted buffer must still recover.
+@@ -41,6 +41,44 @@ test("LIVE/닫기/플레이어 교체 시 원래 설정과 함수를 복원한
+   control.restore();
+   assert.equal(hls.streamController.synchronizeToLiveEdge, sync);
+ });
++test("일시정지 중 HLS 조각 로딩과 앞쪽 버퍼를 유지하고 재개 시 제한을 복원한다", () => {
++  const { hls, media } = fixture();
++  const original = { ...hls.config };
++  const starts = [];
++  let resumes = 0;
++  media.paused = true;
++  hls.loadingEnabled = false;
++  hls.bufferingEnabled = false;
++  hls.startLoad = (...args) => { starts.push(args); hls.loadingEnabled = true; };
++  hls.resumeBuffering = () => { resumes++; hls.bufferingEnabled = true; };
++  const control = createTimeShift();
++  control.run("enable", hls, media);
++  assert.equal(media.currentTime, 95);
++  assert.deepEqual(starts, [[95, true]]);
++  assert.equal(resumes, 1);
++  assert.equal(hls.config.maxBufferLength, 3600);
++  assert.equal(hls.config.maxMaxBufferLength, 3600);
++  control.run("status", hls, media);
++  assert.equal(starts.length, 1);
++  media.paused = false;
++  control.run("status", hls, media);
++  assert.equal(hls.config.maxBufferLength, 330);
++  assert.equal(hls.config.maxMaxBufferLength, 600);
++  control.restore();
++  assert.deepEqual(hls.config, original);
++});
++test("HLS가 메모리 압박으로 낮춘 버퍼 한도를 다시 올리지 않는다", () => {
++  const { hls, media } = fixture();
++  media.paused = true;
++  const control = createTimeShift();
++  control.run("enable", hls, media);
++  hls.config.maxMaxBufferLength = 120;
++  control.run("status", hls, media);
++  assert.equal(hls.config.maxMaxBufferLength, 120);
++  media.paused = false;
++  control.run("status", hls, media);
++  assert.equal(hls.config.maxMaxBufferLength, 120);
++});
+ test("연결 실패는 정상 재생을 건드리지 않으며 성공으로 보고하지 않는다", () => {
+   const { hls, media } = fixture();
+   const control = createTimeShift();
+@@ -93,3 +131,97 @@ test("첫 최고 화질만 자동 선택하고 사용자 수동 선택과 채널
+   tick();
+   assert.equal(hls.currentLevel, 1);
+ });
++
++test("본방송을 실제로 일시정지하면 TM 패널 없이도 버퍼 유지 모드로 들어간다", () => {
++  const listeners = new Map();
++  const { hls, media } = fixture();
++  media.paused = false;
++  media.readyState = 4;
++  media.videoWidth = 1920;
++  media.videoHeight = 1080;
++  media.closest = () => null;
++  const layout = { querySelectorAll: () => [media], _corePlayer: { player: { _mediaController: { _hls: hls } } } };
++  const document = {
++    addEventListener(name, listener) { listeners.set(name, listener); },
++    getElementById: () => layout,
++  };
++  let tick;
++  const target = { document, location: { pathname: "/live/a" }, setInterval(fn) { tick = fn; }, addEventListener() {} };
++  install(target);
++  media.paused = true;
++  listeners.get("pause")({ target: media });
++  assert.equal(hls.config.maxBufferLength, 30);
++  media.paused = false;
++  listeners.get("playing")({ target: media });
++  media.paused = true;
++  listeners.get("pause")({ target: media });
++  assert.equal(hls.config.maxBufferLength, 3600);
++  media.paused = false;
++  tick();
++  assert.equal(hls.config.maxBufferLength, 330);
++});
++
++test("RAW는 HLS 조각을 다시 인코딩하지 않고 TS/MP4 원본 바이트로 연결한다", async () => {
++  const listeners = new Map(), media = {};
++  const hls = { media, on(name, fn) { listeners.set(name, fn); }, off(name, fn) { if (listeners.get(name) === fn) listeners.delete(name); } };
++  const emit = (sn, payload, extra = {}) => listeners.get("hlsFragLoaded")?.("hlsFragLoaded", {
++    frag: { type: "main", sn, level: 2, ...extra }, payload,
++  });
++  const recorder = createRawRecorder();
++  const ts = () => { const packet = new Uint8Array(376); packet[0] = packet[188] = 0x47; return packet; };
++  recorder.start(hls, media);
++  emit(100, ts().buffer);
++  emit(101, ts().buffer);
++  const transport = recorder.stop();
++  assert.equal(transport.ext, "ts");
++  assert.equal(transport.blob.size, 752);
++  assert.equal(listeners.size, 0);
++
++  const box = (name) => { const data = new Uint8Array(16); data.set([...name].map(c => c.charCodeAt(0)), 4); return data; };
++  const init = box("ftyp"), fragment = box("moof");
++  recorder.start(hls, media);
++  emit(200, fragment.buffer, { initSegment: { data: init } });
++  const mp4 = recorder.stop();
++  assert.equal(mp4.ext, "mp4");
++  assert.deepEqual(new Uint8Array(await mp4.blob.arrayBuffer()), new Uint8Array([...init, ...fragment]));
++
++  let failure = "", partial;
++  const guarded = createRawRecorder((message, result) => { failure = message; partial = result; });
++  guarded.start(hls, media);
++  emit(300, ts().buffer);
++  emit(302, ts().buffer);
++  assert.match(failure, /누락/);
++  assert.equal(partial.ext, "ts");
++  assert.equal(partial.blob.size, 376);
++  assert.equal(guarded.active(), false);
++  assert.throws(() => guarded.stop(), /누락/);
++});
++
++test("RAW 버튼 명령은 본방송 HLS에만 연결하고 저장 링크를 만든다", () => {
++  const listeners = new Map(), hlsListeners = new Map(), links = [];
++  const media = { readyState: 2, videoWidth: 1920, videoHeight: 1080, closest: () => null, buffered: { length: 0 } };
++  const hls = { media, levels: [], config: {}, streamController: {},
++    on(name, fn) { hlsListeners.set(name, fn); }, off(name) { hlsListeners.delete(name); } };
++  const root = { _corePlayer: { player: { _mediaController: { _hls: hls } } }, querySelector: () => media };
++  const document = {
++    addEventListener(name, fn) { listeners.set(name, fn); },
++    dispatchEvent(event) { listeners.get(event.type)?.(event); },
++    getElementById: () => root, querySelector: () => media,
++    createElement: () => ({ click() { links.push({ name: this.download, url: this.href }); }, remove() {} }),
++    body: { appendChild() {} },
++  };
++  const target = { document, location: { pathname: "/live/a" }, CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
++    URL: { createObjectURL: () => "blob:test", revokeObjectURL() {} }, setInterval() {}, setTimeout() {}, addEventListener() {} };
++  install(target);
++  let response;
++  listeners.set("hanbi-raw-result", event => { response = JSON.parse(event.detail); });
++  document.dispatchEvent(new target.CustomEvent("hanbi-raw-command", { detail: JSON.stringify({ id: 1, command: "start", name: "test" }) }));
++  assert.equal(response.ok, true);
++  const packet = new Uint8Array(376); packet[0] = packet[188] = 0x47;
++  hlsListeners.get("hlsFragLoaded")("hlsFragLoaded", { frag: { type: "main", sn: 1, level: 0 }, payload: packet.buffer });
++  document.dispatchEvent(new target.CustomEvent("hanbi-raw-command", { detail: JSON.stringify({ id: 2, command: "stop" }) }));
++  assert.equal(response.ok, true);
++  assert.equal(response.ext, "ts");
++  assert.deepEqual(links, [{ name: "test.ts", url: "blob:test" }]);
++  assert.equal(hlsListeners.size, 0);
++});
+diff --git a/timeshift.js b/timeshift.js
+index cd694a4..2179ab3 100644
+--- a/timeshift.js
++++ b/timeshift.js
+@@ -39,15 +39,40 @@
+   }
+   function createTimeShift() {
+     let active = null;
++    const pausedForwardSeconds = 3600;
++    const forwardKeys = ["maxBufferLength", "maxMaxBufferLength"];
+     function restore() {
+       if (!active) return;
+       const state = active;
+       active = null;
+       for (const [key, value] of Object.entries(state.original)) {
+-        if (state.hls.config?.[key] === state.applied[key]) state.hls.config[key] = value;
++        if (state.hls.config?.[key] === (state.pausedValues[key] ?? state.applied[key])) state.hls.config[key] = value;
+       }
+       if (state.controller.synchronizeToLiveEdge === state.wrapper) state.controller.synchronizeToLiveEdge = state.sync;
+     }
++    function keepPausedBuffering(state) {
++      if (active !== state) return;
++      const { hls, media } = state;
++      if (media.paused) {
++        for (const key of forwardKeys) {
++          if (key in state.pausedValues || hls.config[key] !== state.applied[key]) continue;
++          const value = Math.max(hls.config[key], pausedForwardSeconds);
++          if (value !== hls.config[key]) {
++            hls.config[key] = value;
++            state.pausedValues[key] = value;
++          }
++        }
++        try {
++          if (hls.bufferingEnabled === false) hls.resumeBuffering?.();
++          if (hls.loadingEnabled === false) hls.startLoad?.(media.currentTime, true);
++        } catch (error) { console.warn("[CHZZK All-in-One TM] 일시정지 버퍼 재개 실패", error); }
++      } else {
++        for (const [key, value] of Object.entries(state.pausedValues)) {
++          if (hls.config[key] === value) hls.config[key] = state.applied[key];
++          delete state.pausedValues[key];
++        }
++      }
++    }
+     function enable(hls, media) {
+       if (active?.hls === hls && active.media === media) return;
+       restore();
+@@ -59,10 +84,10 @@
+       const keys = ["backBufferLength", "maxBufferSize", "maxBufferLength", "maxMaxBufferLength"];
+       const original = Object.fromEntries(keys.map((key) => [key, hls.config[key]]));
+       if (keys.some((key) => typeof original[key] !== "number" || Number.isNaN(original[key]))) throw new Error("지원하지 않는 HLS 버퍼 설정입니다.");
+-      // ponytail: retain 5 minutes / 100 MB rather than upstream's unbounded back buffer and 1000x limits.
+-      const applied = { backBufferLength: 300, maxBufferSize: Math.max(original.maxBufferSize, 100_000_000), maxBufferLength: Math.max(original.maxBufferLength, 330), maxMaxBufferLength: Math.max(original.maxMaxBufferLength, 330) };
++      // hls.js leaves old media in the browser's buffer; Firefox may still evict it under memory pressure.
++      const applied = { backBufferLength: Infinity, maxBufferSize: Math.max(original.maxBufferSize, 100_000_000), maxBufferLength: Math.max(original.maxBufferLength, 330), maxMaxBufferLength: Math.max(original.maxMaxBufferLength, 330) };
+       const sync = controller.synchronizeToLiveEdge;
+-      const state = { hls, media, controller, original, applied, sync, wrapper: null };
++      const state = { hls, media, controller, original, applied, sync, wrapper: null, pausedValues: {} };
+       state.wrapper = function(...args) {
+         if (active === state) {
+           const buffered = media.buffered;
+@@ -78,10 +103,12 @@
+         Object.assign(hls.config, applied);
+         controller.synchronizeToLiveEdge = state.wrapper;
+         if (controller.synchronizeToLiveEdge !== state.wrapper) throw new Error("HLS 동기화 제어를 적용하지 못했습니다.");
++        keepPausedBuffering(state);
+       } catch (error) { restore(); throw error; }
+     }
+     function run(command, hls, media, time) {
+       if (active && (active.hls !== hls || active.media !== media)) restore();
++      if (command === "status" && active) keepPausedBuffering(active);
+       if (command === "restore") restore();
+       else if (command === "enable") enable(hls, media);
+       else if (command === "seek" || command === "live") {
+@@ -103,9 +130,91 @@
+     }
+     return { run, restore };
+   }
++  function createRawRecorder(onError = () => {}) {
++    let session = null, lastError = "";
++    const bytesOf = value => value instanceof ArrayBuffer ? new Uint8Array(value) : value instanceof Uint8Array ? value : null;
++    const formatOf = bytes => {
++      if (bytes[0] === 0x47 && bytes[188] === 0x47) return "ts";
++      const box = String.fromCharCode(...bytes.subarray(4, 8));
++      return ["moof", "styp"].includes(box) ? "mp4" : null;
++    };
++    function detach() {
++      if (!session) return null;
++      const old = session;
++      session = null;
++      old.hls.off("hlsFragLoaded", old.onFragment);
++      return old;
++    }
++    function result(old) {
++      if (!old?.format) return null;
++      return { blob: new Blob(old.chunks, { type: old.format === "ts" ? "video/mp2t" : "video/mp4" }), ext: old.format };
++    }
++    function fail(message) {
++      lastError = message;
++      const partial = result(detach());
++      try { onError(message, partial); } catch (error) { console.error("[CHZZK All-in-One RAW]", error); }
++    }
++    function start(hls, media) {
++      if (session) throw new Error("RAW 녹화가 이미 진행 중입니다.");
++      if (!hls?.on || !hls?.off || !media || (hls.media && hls.media !== media)) throw new Error("본방송 HLS 플레이어를 찾지 못했습니다. 기존 REC를 이용해 주세요.");
++      lastError = "";
++      const current = { hls, media, chunks: [], format: "", level: null, lastSn: null, onFragment: null };
++      current.onFragment = (_, data) => {
++        const frag = data?.frag;
++        if (frag?.type === "audio") return fail("오디오가 별도 트랙인 방송은 RAW로 합칠 수 없습니다. 기존 REC를 이용해 주세요.");
++        if (frag?.type !== "main" || !Number.isInteger(frag.sn)) return;
++        if (data.part) return fail("저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요.");
++        if (frag.encrypted) return fail("암호화된 방송 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요.");
++        const bytes = bytesOf(data.payload);
++        if (!bytes?.length) return;
++        const format = formatOf(bytes);
++        if (!format) return fail("방송 조각 형식을 확인할 수 없습니다. 기존 REC를 이용해 주세요.");
++        if (current.format && current.format !== format) return fail("방송 조각 형식이 바뀌었습니다. 기존 REC를 이용해 주세요.");
++        if (current.level !== null && current.level !== frag.level) return fail("녹화 중 화질이 바뀌어 RAW 파일 연결을 중단했습니다. 기존 REC를 이용해 주세요.");
++        if (current.lastSn !== null && frag.sn !== current.lastSn + 1) return fail("방송 조각이 누락되거나 재생 위치가 바뀌었습니다. 기존 REC를 이용해 주세요.");
++        if (!current.format && format === "mp4") {
++          const init = bytesOf(frag.initSegment?.data);
++          if (!init?.length || String.fromCharCode(...init.subarray(4, 8)) !== "ftyp") return fail("MP4 시작 조각을 찾지 못했습니다. 기존 REC를 이용해 주세요.");
++          current.chunks.push(init.slice());
++        }
++        current.format = format;
++        current.level = frag.level;
++        current.lastSn = frag.sn;
++        current.chunks.push(bytes.slice());
++      };
++      session = current;
++      hls.on("hlsFragLoaded", current.onFragment);
++    }
++    function stop() {
++      const old = detach();
++      if (!old) throw new Error(lastError || "RAW 녹화가 진행 중이지 않습니다.");
++      if (!old.format) throw new Error("받은 방송 조각이 없습니다. 잠시 재생한 뒤 다시 시도해 주세요.");
++      return result(old);
++    }
++    return { start, stop, fail, active: () => Boolean(session), matches: (hls, media) => !session || session.hls === hls && session.media === media };
++  }
+   function install(target) {
+     const document = target.document;
+     const control = createTimeShift();
++    let rawName = "chzzk_raw";
++    const saveRaw = ({ blob, ext }) => {
++      const url = target.URL.createObjectURL(blob);
++      const link = document.createElement("a");
++      link.href = url;
++      link.download = `${rawName}.${ext}`;
++      document.body.appendChild(link);
++      link.click();
++      link.remove();
++      target.setTimeout(() => target.URL.revokeObjectURL(url), 60_000);
++    };
++    const raw = createRawRecorder((message, partial) => {
++      let detail = message;
++      if (partial) {
++        try { saveRaw(partial); detail += " 받은 구간의 부분 파일 다운로드를 요청했습니다."; }
++        catch (error) { console.error("[CHZZK All-in-One RAW]", error); detail += " 부분 파일 저장에도 실패했습니다."; }
++      }
++      document.dispatchEvent(new target.CustomEvent("hanbi-raw-error", { detail }));
++    });
+     let activePath = target.location.pathname;
+     let initialQualityPlayer = null, manualQuality = false;
+     document.addEventListener('hanbi-quality-manual', () => { manualQuality = true; });
+@@ -117,6 +226,35 @@
+       const nativeTimeMachine = Boolean(roots.some(root => root?.__vue__?.timeMachine));
+       return { media, hls, nativeTimeMachine };
+     };
++    const playedMedia = new WeakSet();
++    document.addEventListener("playing", (event) => {
++      if (event.target === locate().media) playedMedia.add(event.target);
++    }, true);
++    document.addEventListener("pause", (event) => {
++      if (!/^\/live\//.test(target.location.pathname) || !playedMedia.has(event.target)) return;
++      const { media, hls, nativeTimeMachine } = locate();
++      if (media !== event.target || !hls || nativeTimeMachine) return;
++      try { control.run("enable", hls, media); }
++      catch (error) { console.warn("[CHZZK All-in-One TM] 일시정지 버퍼 연결 실패", error); }
++    }, true);
++    document.addEventListener("hanbi-raw-command", (event) => {
++      let request;
++      try {
++        request = JSON.parse(event.detail);
++        if (request.command === "start") {
++          const { hls, media } = locate();
++          raw.start(hls, media);
++          rawName = String(request.name || "chzzk_raw").replace(/[\\/:*?"<>|]/g, "_");
++          document.dispatchEvent(new target.CustomEvent("hanbi-raw-result", { detail: JSON.stringify({ id: request.id, ok: true, active: true }) }));
++        } else if (request.command === "stop") {
++          const { blob, ext } = raw.stop();
++          saveRaw({ blob, ext });
++          document.dispatchEvent(new target.CustomEvent("hanbi-raw-result", { detail: JSON.stringify({ id: request.id, ok: true, active: false, ext, bytes: blob.size }) }));
++        }
++      } catch (error) {
++        document.dispatchEvent(new target.CustomEvent("hanbi-raw-result", { detail: JSON.stringify({ id: request?.id, ok: false, active: raw.active(), error: error.message }) }));
++      }
++    });
+     document.addEventListener("hanbi-timeshift-command", (event) => {
+       let request;
+       try {
+@@ -134,9 +272,10 @@
+     });
+     // Restore even when navigation removes the panel before it can send a command.
+     target.setInterval(() => {
+-      if (target.location.pathname !== activePath) { control.restore(); activePath = target.location.pathname; initialQualityPlayer = null; manualQuality = false; }
++      if (target.location.pathname !== activePath) { control.restore(); if (raw.active()) raw.fail("방송을 이동해 RAW 녹화를 중단했습니다."); activePath = target.location.pathname; initialQualityPlayer = null; manualQuality = false; }
+       if (!/^\/live\//.test(activePath)) return;
+       const { hls, media, nativeTimeMachine } = locate();
++      if (raw.active() && hls && media && !raw.matches(hls, media)) raw.fail("본방송 플레이어가 교체되어 RAW 녹화를 중단했습니다.");
+       control.run("status", hls, media);
+       if (!nativeTimeMachine && !manualQuality && hls && hls !== initialQualityPlayer && hls.levels?.length && media?.readyState >= 2) {
+         const levels = hls.levels.map((level, index) => ({ height: Number(level.height) || 0, bitrate: Number(level.bitrate) || 0, index }));
+@@ -147,5 +286,5 @@
+     target.addEventListener("pagehide", control.restore);
+   }
+   if (typeof window !== "undefined") install(window);
+-  if (typeof module !== "undefined") module.exports = { findHls, bufferedPosition, createTimeShift, mediaCandidates, install };
++  if (typeof module !== "undefined") module.exports = { findHls, bufferedPosition, createTimeShift, createRawRecorder, mediaCandidates, install };
+ })();
+diff --git a/tools.js b/tools.js
+index 9d6468b..487dcef 100644
+--- a/tools.js
++++ b/tools.js
+@@ -135,6 +135,7 @@
+   let features = { ...defaults };
+   let trendOptions = { ...trendDefaults };
+   let recording = null;
++  let rawRecording = null;
+   let sharedCapture = null;
+   let monitorGraph = null;
+   let scheduled = false;
+@@ -518,6 +519,47 @@
+     status(stream.getAudioTracks().length ? "녹화를 시작했습니다." : "오디오 없이 녹화를 시작했습니다.");
+   }
+ 
++  let rawRequestId = 0;
++  function rawCommand(command) {
++    const id = ++rawRequestId;
++    let response;
++    const receive = (event) => {
++      try { const value = JSON.parse(event.detail); if (value.id === id) response = value; } catch (_) {}
++    };
++    document.addEventListener("hanbi-raw-result", receive);
++    try {
++      document.dispatchEvent(new CustomEvent("hanbi-raw-command", {
++        detail: JSON.stringify({ id, command, name: fileName("ts").replace(/\.ts$/, "") }),
++      }));
++    } finally { document.removeEventListener("hanbi-raw-result", receive); }
++    if (!response?.ok) {
++      if (!response?.active) rawRecording = null;
++      throw new Error(response?.error || "RAW 녹화 연결을 찾지 못했습니다. 확장과 방송 탭을 새로고침해 주세요.");
++    }
++    return response;
++  }
++
++  function toggleRawRecording(buttonElement) {
++    if (rawRecording) {
++      let result;
++      try { result = rawCommand("stop"); }
++      finally {
++        rawRecording = null;
++        buttonElement.textContent = "RAW";
++        buttonElement.classList.remove("is-recording");
++      }
++      status(`방송 원본 조각의 ${result.ext.toUpperCase()} 다운로드를 시작했습니다.`);
++      return;
++    }
++    const source = video();
++    if (!source) throw new Error("재생 중인 영상을 찾지 못했습니다.");
++    rawCommand("start");
++    rawRecording = { source, channelPath: location.pathname };
++    buttonElement.textContent = "STOP";
++    buttonElement.classList.add("is-recording");
++    status("RAW 녹화를 시작했습니다. 전송되는 방송 조각을 그대로 모읍니다.");
++  }
++
+   // Derived from cheese-knife's MIT-licensed MediaElementSource → DynamicsCompressor → Gain graph.
+   function closeCompressor() {
+     if (!compressorData) return;
+@@ -639,7 +681,7 @@
+     const target = document.querySelector(".pzp-pc__bottom-buttons-right");
+     const existing = document.getElementById("hanbi-player-tools");
+     // const hasPip = Boolean(video()?.requestPictureInPicture);
+-    const signature = `${features.recorder}:${features.screenshot}:${isLive()}`;
++    const signature = `${features.recorder}:${features.screenshot}:${isLive()}:${Boolean(rawRecording)}`;
+     if (!target) return;
+     if (existing?.parentElement === target && existing.dataset.signature === signature) return;
+     existing?.remove();
+@@ -653,6 +695,12 @@
+       if (recording) { recording.button = recordButton; recordButton.textContent = 'STOP'; recordButton.classList.add('is-recording'); }
+       root.appendChild(recordButton);
+     }
++    if (isLive() && (features.recorder || rawRecording)) {
++      const rawButton = button("방송 원본 조각 녹화 시작/저장", "RAW", () => toggleRawRecording(rawButton));
++      rawButton.id = "hanbi-raw-button";
++      if (rawRecording) { rawButton.textContent = "STOP"; rawButton.classList.add("is-recording"); }
++      root.appendChild(rawButton);
++    }
+     if (features.screenshot) root.appendChild(button("스크린샷", "SHOT", screenshot));
+     // if (hasPip) root.appendChild(button("Picture in Picture", "PIP", togglePip));
+     if (isLive()) {
+@@ -703,6 +751,10 @@
+     if (recording && (recording.source !== source || recording.channelPath !== location.pathname)) {
+       if (recording.recorder.state !== 'inactive') recording.recorder.stop();
+     }
++    if (rawRecording && (rawRecording.source !== source || rawRecording.channelPath !== location.pathname)) {
++      try { rawCommand("stop"); } catch (error) { console.warn("[CHZZK All-in-One RAW]", error); }
++      rawRecording = null;
++    }
+     if (!source) return;
+     if (!preparedVideos.has(source)) {
+       preparedVideos.add(source);
+@@ -1020,7 +1072,7 @@
+     }
+     const css = [
+       features.hideDonation ? "[class*='live_chatting_list_donation_'], [class*='donation'][class*='chat'] { display: none !important; }" : "",
+-      features.chatFontSizeEnabled ? `[class*='live_chatting_message_text'], [data-message-text] { font-size: ${trendOptions.chatFontSize}px !important; }` : "",
++      features.chatFontSizeEnabled ? `aside#aside-chatting [role='log'] [class*='_chatting_message_'] > [class*='_text_'], [class*='live_chatting_message_text'], [data-message-text] { font-size: ${trendOptions.chatFontSize}px !important; }` : "",
+     ].filter(Boolean).join("\n");
+     if (style.textContent !== css) style.textContent = css;
+   }
+@@ -1469,6 +1521,7 @@
+   new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+   window.addEventListener("pagehide", () => {
+     if (recording?.recorder.state !== 'inactive' && recording) recording.recorder.stop();
++    if (rawRecording) { try { rawCommand("stop"); } catch (error) { console.warn("[CHZZK All-in-One RAW]", error); } rawRecording = null; }
+     clearInterval(trendTimer);
+     clearInterval(followingTimer);
+     clearInterval(sidebarRefreshTimer);
+@@ -1481,8 +1534,14 @@
+     hideTrendPreview();
+     if (previewUrl) URL.revokeObjectURL(previewUrl);
+   });
++  document.addEventListener("hanbi-raw-error", event => {
++    rawRecording = null;
++    const button = document.getElementById("hanbi-raw-button");
++    if (button) { button.textContent = "RAW"; button.classList.remove("is-recording"); }
++    status(event.detail || "RAW 녹화를 중단했습니다.", true);
++  });
+   window.addEventListener('beforeunload', event => {
+-    if (recording) { event.preventDefault(); event.returnValue = ''; }
++    if (recording || rawRecording) { event.preventDefault(); event.returnValue = ''; }
+   });
+   window.addEventListener('pageshow', event => {
+     if (!event.persisted) return;

@@ -135,6 +135,7 @@
   let features = { ...defaults };
   let trendOptions = { ...trendDefaults };
   let recording = null;
+  let rawRecording = null;
   let sharedCapture = null;
   let monitorGraph = null;
   let scheduled = false;
@@ -518,6 +519,47 @@
     status(stream.getAudioTracks().length ? "녹화를 시작했습니다." : "오디오 없이 녹화를 시작했습니다.");
   }
 
+  let rawRequestId = 0;
+  function rawCommand(command) {
+    const id = ++rawRequestId;
+    let response;
+    const receive = (event) => {
+      try { const value = JSON.parse(event.detail); if (value.id === id) response = value; } catch (_) {}
+    };
+    document.addEventListener("hanbi-raw-result", receive);
+    try {
+      document.dispatchEvent(new CustomEvent("hanbi-raw-command", {
+        detail: JSON.stringify({ id, command, name: fileName("ts").replace(/\.ts$/, "") }),
+      }));
+    } finally { document.removeEventListener("hanbi-raw-result", receive); }
+    if (!response?.ok) {
+      if (!response?.active) rawRecording = null;
+      throw new Error(response?.error || "RAW 녹화 연결을 찾지 못했습니다. 확장과 방송 탭을 새로고침해 주세요.");
+    }
+    return response;
+  }
+
+  function toggleRawRecording(buttonElement) {
+    if (rawRecording) {
+      let result;
+      try { result = rawCommand("stop"); }
+      finally {
+        rawRecording = null;
+        buttonElement.textContent = "RAW";
+        buttonElement.classList.remove("is-recording");
+      }
+      status(`방송 원본 조각의 ${result.ext.toUpperCase()} 다운로드를 시작했습니다.`);
+      return;
+    }
+    const source = video();
+    if (!source) throw new Error("재생 중인 영상을 찾지 못했습니다.");
+    rawCommand("start");
+    rawRecording = { source, channelPath: location.pathname };
+    buttonElement.textContent = "STOP";
+    buttonElement.classList.add("is-recording");
+    status("RAW 녹화를 시작했습니다. 전송되는 방송 조각을 그대로 모읍니다.");
+  }
+
   // Derived from cheese-knife's MIT-licensed MediaElementSource → DynamicsCompressor → Gain graph.
   function closeCompressor() {
     if (!compressorData) return;
@@ -639,7 +681,7 @@
     const target = document.querySelector(".pzp-pc__bottom-buttons-right");
     const existing = document.getElementById("hanbi-player-tools");
     // const hasPip = Boolean(video()?.requestPictureInPicture);
-    const signature = `${features.recorder}:${features.screenshot}:${isLive()}`;
+    const signature = `${features.recorder}:${features.screenshot}:${isLive()}:${Boolean(rawRecording)}`;
     if (!target) return;
     if (existing?.parentElement === target && existing.dataset.signature === signature) return;
     existing?.remove();
@@ -652,6 +694,12 @@
       const recordButton = button("녹화 시작/중지", "REC", () => toggleRecording(recordButton));
       if (recording) { recording.button = recordButton; recordButton.textContent = 'STOP'; recordButton.classList.add('is-recording'); }
       root.appendChild(recordButton);
+    }
+    if (isLive() && (features.recorder || rawRecording)) {
+      const rawButton = button("방송 원본 조각 녹화 시작/저장", "RAW", () => toggleRawRecording(rawButton));
+      rawButton.id = "hanbi-raw-button";
+      if (rawRecording) { rawButton.textContent = "STOP"; rawButton.classList.add("is-recording"); }
+      root.appendChild(rawButton);
     }
     if (features.screenshot) root.appendChild(button("스크린샷", "SHOT", screenshot));
     // if (hasPip) root.appendChild(button("Picture in Picture", "PIP", togglePip));
@@ -702,6 +750,10 @@
     const source = video();
     if (recording && (recording.source !== source || recording.channelPath !== location.pathname)) {
       if (recording.recorder.state !== 'inactive') recording.recorder.stop();
+    }
+    if (rawRecording && (rawRecording.source !== source || rawRecording.channelPath !== location.pathname)) {
+      try { rawCommand("stop"); } catch (error) { console.warn("[CHZZK All-in-One RAW]", error); }
+      rawRecording = null;
     }
     if (!source) return;
     if (!preparedVideos.has(source)) {
@@ -1020,7 +1072,7 @@
     }
     const css = [
       features.hideDonation ? "[class*='live_chatting_list_donation_'], [class*='donation'][class*='chat'] { display: none !important; }" : "",
-      features.chatFontSizeEnabled ? `[class*='live_chatting_message_text'], [data-message-text] { font-size: ${trendOptions.chatFontSize}px !important; }` : "",
+      features.chatFontSizeEnabled ? `aside#aside-chatting [role='log'] [class*='_chatting_message_'] > [class*='_text_'], [class*='live_chatting_message_text'], [data-message-text] { font-size: ${trendOptions.chatFontSize}px !important; }` : "",
     ].filter(Boolean).join("\n");
     if (style.textContent !== css) style.textContent = css;
   }
@@ -1469,6 +1521,7 @@
   new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener("pagehide", () => {
     if (recording?.recorder.state !== 'inactive' && recording) recording.recorder.stop();
+    if (rawRecording) { try { rawCommand("stop"); } catch (error) { console.warn("[CHZZK All-in-One RAW]", error); } rawRecording = null; }
     clearInterval(trendTimer);
     clearInterval(followingTimer);
     clearInterval(sidebarRefreshTimer);
@@ -1481,8 +1534,14 @@
     hideTrendPreview();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   });
+  document.addEventListener("hanbi-raw-error", event => {
+    rawRecording = null;
+    const button = document.getElementById("hanbi-raw-button");
+    if (button) { button.textContent = "RAW"; button.classList.remove("is-recording"); }
+    status(event.detail || "RAW 녹화를 중단했습니다.", true);
+  });
   window.addEventListener('beforeunload', event => {
-    if (recording) { event.preventDefault(); event.returnValue = ''; }
+    if (recording || rawRecording) { event.preventDefault(); event.returnValue = ''; }
   });
   window.addEventListener('pageshow', event => {
     if (!event.persisted) return;

@@ -1,0 +1,127 @@
+{
+  "scenarios": [
+    {
+      "name": "PLAY: live video plays (readyState>=3, currentTime>0, not paused)",
+      "pass": true,
+      "detail": {
+        "bufferedEnd": 47.987645,
+        "count": 2,
+        "currentTime": 44.934666,
+        "droppedFrames": 0,
+        "muted": false,
+        "networkState": 2,
+        "paused": false,
+        "readyState": 4,
+        "src": "blob:https://chzzk.naver.com/2543b1b7-5d80-4618-9b44-70608910c5e5",
+        "totalFrames": 239,
+        "videoHeight": 1080,
+        "videoWidth": 1920
+      }
+    },
+    {
+      "name": "UI-01: toolbar once with REC/RAW/SHOT/Q*/TM",
+      "pass": true,
+      "detail": {
+        "duplicateIds": [],
+        "previews": 0,
+        "rawButtons": 1,
+        "toolButtons": [
+          "REC",
+          "RAW",
+          "SHOT",
+          "Q 1080p",
+          "TM"
+        ],
+        "toolbars": 1,
+        "trendBars": 1
+      }
+    },
+    {
+      "name": "QUALITY: Q reports actual decoded height",
+      "pass": true,
+      "detail": {
+        "height": 1080,
+        "status": null
+      }
+    },
+    {
+      "name": "AD-MODAL: no adblock-warning or cheat-key modal during viewing window",
+      "pass": true,
+      "detail": {
+        "hasCheat": false,
+        "hasWarning": false
+      }
+    },
+    {
+      "name": "SPA-DUP: after repeated navigation toolbar stays single, no duplicate hanbi ids",
+      "pass": true,
+      "detail": [
+        {
+          "channel": "7ce8032370ac5121dcabce7bad375ced",
+          "toolbars": 1,
+          "dups": [],
+          "buttons": [
+            "REC",
+            "RAW",
+            "SHOT",
+            "Q 1080p",
+            "TM"
+          ]
+        },
+        {
+          "channel": "1c231568d0b13de5703b3f6a5e86dc47",
+          "toolbars": 1,
+          "dups": [],
+          "buttons": [
+            "REC",
+            "RAW",
+            "SHOT",
+            "Q 1080p",
+            "TM"
+          ]
+        },
+        {
+          "channel": "75cbf189b3bb8f9f687d2aca0d0a382b",
+          "toolbars": 1,
+          "dups": [],
+          "buttons": [
+            "REC",
+            "RAW",
+            "SHOT",
+            "Q 1080p",
+            "TM"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SPA-PLAY: playback recovers after navigation",
+      "pass": true,
+      "detail": {
+        "bufferedEnd": 50.00002,
+        "count": 4,
+        "currentTime": 46.991,
+        "droppedFrames": 0,
+        "muted": false,
+        "networkState": 2,
+        "paused": false,
+        "readyState": 4,
+        "src": "blob:https://chzzk.naver.com/7bdeb119-f557-44a9-b3d0-c7386d2db744",
+        "totalFrames": 483,
+        "videoHeight": 1080,
+        "videoWidth": 1920
+      }
+    },
+    {
+      "name": "CONSOLE: no uncaught errors during session",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "consoleErrors": [],
+  "summary": {
+    "version": "1.1.15",
+    "finishedAt": "2026-09-27T20:13:23.929Z",
+    "pass": true
+  }
+}

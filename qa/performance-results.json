@@ -1,0 +1,223 @@
+{
+  "generatedAt": "2026-09-27T21:32:18.004Z",
+  "channel": {
+    "id": "a9ab391cdd3faef4ca2ee782e96e5c59",
+    "title": "에게리 같이보기 1화부터 (까짓거 한 번 해 보죠 안 나옴)"
+  },
+  "offRun": {
+    "startedAt": "2026-09-27T21:01:45.754Z",
+    "minutes": 10
+  },
+  "onRun": {
+    "startedAt": "2026-09-27T21:12:45.967Z",
+    "minutes": 10
+  },
+  "caveats": [
+    "동일 방송·동일 시간대 연속 실행(순차). 네트워크/방송 품질 변동은 완전히 통제되지 않음.",
+    "CPU/메모리는 QA 세션 Firefox 프로세스만 집계(사용자 실행 브라우저 PID 제외).",
+    "확장 OFF 실행에도 CHZZK 자체 네트워크·프레임 특성이 포함되므로 절대값보다 delta 해석.",
+    "실광고/GRID/제한중계는 이 실행에서 강제 불가 — fixture 기반 회귀 테스트로 보완, 아래 unverified 참조."
+  ],
+  "rows": [
+    {
+      "scenario": "PERF-A",
+      "metric": "paused samples",
+      "unit": "samples/10min",
+      "baseline": 0,
+      "extensionOn": 0,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "stall events",
+      "unit": "events/10min",
+      "baseline": 18,
+      "extensionOn": 2,
+      "delta": -16,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "currentTime advance",
+      "unit": "s (10min run)",
+      "baseline": 610.2,
+      "extensionOn": 625.5,
+      "delta": 15.3,
+      "verdict": "see-report",
+      "good": "higher"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "dropped frames",
+      "unit": "frames/10min",
+      "baseline": 0,
+      "extensionOn": 0,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "frame interval p50",
+      "unit": "ms",
+      "baseline": 6.059999999997672,
+      "extensionOn": 6.059999999997672,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "frame interval p95",
+      "unit": "ms",
+      "baseline": 6.060000000055879,
+      "extensionOn": 6.060000000055879,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "frame interval p99",
+      "unit": "ms",
+      "baseline": 6.080000000016298,
+      "extensionOn": 6.080000000016298,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "hitch windows (>50ms frames)",
+      "unit": "windows/3",
+      "baseline": 0,
+      "extensionOn": 0,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "QA firefox CPU",
+      "unit": "% of one core",
+      "baseline": 29.3,
+      "extensionOn": 37,
+      "delta": 7.7,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "QA firefox working set delta",
+      "unit": "MB/10min",
+      "baseline": 38,
+      "extensionOn": 141,
+      "delta": 103,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP api.chzzk.naver.com",
+      "unit": "responses/10min",
+      "baseline": 64,
+      "extensionOn": 94,
+      "delta": 30,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP nam.veta.naver.com",
+      "unit": "responses/10min",
+      "baseline": 1,
+      "extensionOn": 1,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP nlog.naver.com",
+      "unit": "responses/10min",
+      "baseline": 45,
+      "extensionOn": 45,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP siape.veta.naver.com",
+      "unit": "responses/10min",
+      "baseline": 1,
+      "extensionOn": 0,
+      "delta": -1,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP tivan.naver.com",
+      "unit": "responses/10min",
+      "baseline": 2,
+      "extensionOn": 0,
+      "delta": -2,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP nelo2-col.navercorp.com",
+      "unit": "responses/10min",
+      "baseline": 3,
+      "extensionOn": 0,
+      "delta": -3,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP apis.naver.com",
+      "unit": "responses/10min",
+      "baseline": 12,
+      "extensionOn": 12,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "HTTP kr-col-ext.nelo.navercorp.com",
+      "unit": "responses/10min",
+      "baseline": 1,
+      "extensionOn": 1,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "extension DOM nodes end",
+      "unit": "nodes",
+      "baseline": 0,
+      "extensionOn": 6,
+      "delta": 6,
+      "verdict": "see-report",
+      "good": "lower"
+    },
+    {
+      "scenario": "PERF-A",
+      "metric": "duplicate extension ids",
+      "unit": "ids",
+      "baseline": 0,
+      "extensionOn": 0,
+      "delta": 0,
+      "verdict": "see-report",
+      "good": "lower"
+    }
+  ]
+}

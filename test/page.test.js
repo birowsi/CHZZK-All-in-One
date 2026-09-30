@@ -2,6 +2,107 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { chooseVariant, filterMasterPlaylist, patchPayload, isAdMediaSource, neutralizeAds, neutralizeAdBuffer, transformText, isAdFeed, install } = require("../page.js");
 
+const adSchedule = () => ({ head: { description: "GFP Video Ad Schedule" }, adBreaks: [{ adSources: ["ad"] }] });
+function createResponseXHR() {
+  return class XHR {
+    open(method, url) { this.responseURL = url; this.readyState = 1; }
+    get status() { return this.httpStatus ?? 200; }
+    get response() { return this.body; }
+    get responseText() {
+      if (this.responseType && this.responseType !== "text") throw new Error("InvalidStateError");
+      return this.body;
+    }
+    getResponseHeader() { return "application/json"; }
+  };
+}
+
+test("공백·BOM이 있는 광고 JSON 바이트를 처리하고 잘못된 데이터는 보존한다", () => {
+  for (const prefix of [" ", "\r\n\t", "\uFEFF"]) {
+    const bytes = new TextEncoder().encode(prefix + JSON.stringify(adSchedule(), null, 2));
+    const patched = neutralizeAdBuffer(bytes);
+    assert.ok(patched);
+    assert.deepEqual(JSON.parse(new TextDecoder().decode(patched)).adBreaks[0].adSources, []);
+  }
+  for (const text of [' {"normal":true}', ' {bad json}', '[1,2]', 'video']) {
+    assert.equal(neutralizeAdBuffer(new TextEncoder().encode(text)), null);
+  }
+  assert.equal(neutralizeAdBuffer(new Uint8Array([123, 34, 255, 34, 125])), null);
+});
+
+test("XHR JSON은 변경 없는 원본과 변경된 응답의 객체 동일성을 유지한다", () => {
+  const XHR = createResponseXHR();
+  install({ XMLHttpRequest: XHR });
+  const xhr = new XHR();
+  xhr.open("GET", "https://nam.veta.naver.com/gfp/v1/schedule");
+  xhr.readyState = 4;
+  xhr.body = { normal: true };
+  assert.equal(xhr.response, xhr.body);
+  xhr.body = adSchedule();
+  const result = xhr.response;
+  assert.notEqual(result, xhr.body);
+  assert.equal(xhr.response, result);
+  assert.deepEqual(result.adBreaks[0].adSources, []);
+  assert.deepEqual(xhr.body.adBreaks[0].adSources, ["ad"]);
+  xhr.open("GET", "https://nam.veta.naver.com/gfp/v1/schedule");
+  xhr.readyState = 4;
+  assert.notEqual(xhr.response, result);
+});
+
+test("XHR 바이너리 응답은 한 요청 안에서 재사용하고 native 예외·미완료·실패를 보존한다", () => {
+  const XHR = createResponseXHR();
+  install({ XMLHttpRequest: XHR });
+  const xhr = new XHR();
+  xhr.open("GET", "https://nam.veta.naver.com/gfp/v1/schedule");
+  xhr.body = new TextEncoder().encode("\n" + JSON.stringify(adSchedule())).buffer;
+  xhr.responseType = "arraybuffer";
+  xhr.readyState = 3;
+  assert.equal(xhr.response, xhr.body);
+  xhr.readyState = 4;
+  xhr.httpStatus = 500;
+  assert.equal(xhr.response, xhr.body);
+  xhr.httpStatus = 200;
+  const result = xhr.response;
+  assert.ok(result instanceof ArrayBuffer);
+  assert.equal(xhr.response, result);
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(result)).adBreaks[0].adSources, []);
+  assert.throws(() => xhr.responseText, /InvalidStateError/);
+});
+
+test("XHR 완료 응답 캐시는 GRID 설정 변경을 반영한다", () => {
+  const XHR = createResponseXHR();
+  const listeners = new Map();
+  const target = { XMLHttpRequest: XHR, document: {
+    addEventListener(type, fn) { listeners.set(type, fn); }, dispatchEvent() {},
+  }, CustomEvent: class {} };
+  install(target);
+  const xhr = new XHR();
+  xhr.open("GET", "https://api.chzzk.naver.com/service/v3/channels/b33c957eac9335d38e4043c3dca97675/live-detail");
+  xhr.readyState = 4;
+  xhr.body = { content: { p2pQuality: ["1080p"] } };
+  assert.equal(xhr.response, xhr.body);
+  listeners.get("hanbi-playback-settings")({ detail: '{"gridBypass":true}' });
+  const patched = xhr.response;
+  assert.deepEqual(patched.content.p2pQuality, []);
+  assert.equal(xhr.response, patched);
+  listeners.get("hanbi-playback-settings")({ detail: '{"gridBypass":false}' });
+  assert.equal(xhr.response, xhr.body);
+});
+
+test("Uint8Array는 다른 typed array의 원소 변환과 범위 오류를 보존한다", () => {
+  const target = { Uint8Array };
+  install(target);
+  let bytes = new TextEncoder().encode(JSON.stringify(adSchedule()));
+  if (bytes.length % 2) bytes = new TextEncoder().encode(JSON.stringify(adSchedule()) + " ");
+  const words = new Uint16Array(bytes.buffer);
+  assert.deepEqual([...new target.Uint8Array(words)], [...new Uint8Array(words)]);
+  assert.throws(() => new target.Uint8Array(bytes.buffer, bytes.length + 1), RangeError);
+  const framed = new Uint8Array(bytes.length + 4);
+  framed.set(bytes, 2);
+  const patched = new target.Uint8Array(framed.buffer, 2, bytes.length);
+  assert.deepEqual(JSON.parse(new TextDecoder().decode(patched)).adBreaks[0].adSources, []);
+  assert.deepEqual([...framed.slice(2, -2)], [...bytes]);
+});
+
 test("prefers 1080p and removes every P2P field", () => {
   assert.equal(chooseVariant([{ height: 720, fps: 60, bandwidth: 1 }, { height: 1080, fps: 30, bandwidth: 1 }]).height, 1080);
 

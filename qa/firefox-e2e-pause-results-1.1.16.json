@@ -1,0 +1,134 @@
+{
+  "scenarios": [
+    {
+      "name": "PAUSE: video pauses via keyboard",
+      "pass": true,
+      "detail": {
+        "be": 52.005333,
+        "bs": 28.047,
+        "ct": 36.892606,
+        "h": 1080,
+        "paused": true,
+        "rs": 4
+      }
+    },
+    {
+      "name": "PAUSE-BUFFER: currentTime frozen while buffered.end advances (no TM panel)",
+      "pass": false,
+      "detail": {
+        "pausePoint": {
+          "be": 52.005333,
+          "bs": 28.047,
+          "ct": 36.892606,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "first": {
+          "t": 15018,
+          "be": 65.999979,
+          "bs": 36.048,
+          "ct": 36.892606,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "last": {
+          "t": 360307,
+          "be": 183.994645,
+          "bs": 36.048,
+          "ct": 36.892606,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "samples": [
+          {
+            "t": 15018,
+            "be": 65.999979,
+            "bs": 36.048,
+            "ct": 36.892606,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 75077,
+            "be": 126.010645,
+            "bs": 36.048,
+            "ct": 36.892606,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 135129,
+            "be": 183.994645,
+            "bs": 36.048,
+            "ct": 36.892606,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 195172,
+            "be": 183.994645,
+            "bs": 36.048,
+            "ct": 36.892606,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 255223,
+            "be": 183.994645,
+            "bs": 36.048,
+            "ct": 36.892606,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          },
+          {
+            "t": 315271,
+            "be": 183.994645,
+            "bs": 36.048,
+            "ct": 36.892606,
+            "h": 1080,
+            "paused": true,
+            "rs": 4
+          }
+        ],
+        "ctStable": true,
+        "beAdvanced": false
+      }
+    },
+    {
+      "name": "PAUSE-RESUME: playback resumes from the paused point",
+      "pass": true,
+      "detail": {
+        "pausePoint": {
+          "be": 52.005333,
+          "bs": 28.047,
+          "ct": 36.892606,
+          "h": 1080,
+          "paused": true,
+          "rs": 4
+        },
+        "resumed": {
+          "be": 183.994645,
+          "bs": 36.048,
+          "ct": 39.096793,
+          "h": 1080,
+          "paused": false,
+          "rs": 4
+        },
+        "resumedFromPause": true
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "summary": {
+    "finishedAt": "2026-09-28T16:04:02.877Z",
+    "pass": false
+  }
+}

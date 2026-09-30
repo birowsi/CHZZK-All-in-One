@@ -22,7 +22,6 @@ const powerSettings = {
   badgeToggle: ["badge", "updateBadgeToggle", "badgeToggle", true],
   clockToggle: ["clockToggle", "updateClockToggle", "clockToggle", false],
   powerSummaryToggle: ["powerSummary", "updatePowerSummaryToggle", "powerSummaryToggle", false],
-  movingGifProfileToggle: ["movingGifProfile", "updateMovingGifProfileToggle", "movingGifProfileToggle", false],
 };
 
 async function notifyTab(message) {

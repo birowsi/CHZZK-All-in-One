@@ -19,7 +19,23 @@ $files = @(
 
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Push-Location $PSScriptRoot
-try { tar.exe -a -c -f $archive $files } finally { Pop-Location }
+try {
+    tar.exe --format=zip -c -f $archive $files
+    if ($LASTEXITCODE -ne 0) { throw "ZIP 생성 실패 (tar exit $LASTEXITCODE)" }
+} finally { Pop-Location }
+# Some tar implementations accept .zip filenames but still emit TAR. Firefox
+# requires a real ZIP; validate it before publishing the local XPI copy.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$package = [IO.Compression.ZipFile]::OpenRead($archive)
+try {
+    if ($package.Entries.Count -ne $files.Count) { throw "ZIP 파일 수 불일치" }
+    foreach ($file in $files) {
+        if (-not $package.GetEntry($file)) { throw "ZIP 누락 파일: $file" }
+    }
+    $reader = [IO.StreamReader]::new($package.GetEntry("manifest.json").Open())
+    try { $builtVersion = ($reader.ReadToEnd() | ConvertFrom-Json).version } finally { $reader.Dispose() }
+    if ($builtVersion -ne $version) { throw "ZIP 버전 불일치: $builtVersion / $version" }
+} finally { $package.Dispose() }
 if ($ZipOnly) {
     Write-Output $archive
 } else {
