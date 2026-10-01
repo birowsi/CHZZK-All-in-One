@@ -181,3 +181,16 @@ test("컴프레서 연결 실패 시 원음을 연결한다", () => {
   assert.equal(links.at(-1), destination);
   assert.equal(graph.mode, "bypass");
 });
+
+test("PiP·버퍼링·광고로 큰 영상이 바뀌어도 같은 video 녹화는 유지하고, 문서에서 빠지거나 채널을 떠나면 끝낸다", () => {
+  const { shouldStopRecording } = require("../tools.js");
+  const source = { isConnected: true };
+  const session = { source, channelPath: "/live/a" };
+  assert.equal(shouldStopRecording(session, "/live/a", null), false);
+  assert.equal(shouldStopRecording(session, "/live/b", null), true);
+  assert.equal(shouldStopRecording(session, "/lives", source), false, "PiP 영상은 사이트 이동 후에도 유지");
+  assert.equal(shouldStopRecording(session, "/lives", { isConnected: true }), true);
+  source.isConnected = false;
+  assert.equal(shouldStopRecording(session, "/live/a", source), true);
+  assert.equal(shouldStopRecording(null, "/live/a", null), true);
+});

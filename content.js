@@ -10,9 +10,8 @@ let powerAcquisitionEnabled = false;
 const pendingClaims = new Set();
 const completedClaims = new Set();
 let powerClickBusy = false;
-let lastViewChannelId = null;
 let clockToggle = false;
-let lastViewLogTimestampMs = null; // 최근 view 로그 기록 시각 (메모리)
+let pendingViewClaim = null; // 1시간 시청 보상 클릭 후 실제 잔액 증가 확인 대기
 let lastClockNode = null; // 시계 UI 노드 참조
 let powerSummaryToggle = false; // 통나무 개수 요약 표시 토글
 
@@ -409,14 +408,31 @@ async function recordPowerBalance(channelId, amount, trackIncrease = true) {
     cachedPowerAmount = amount;
     cachedPowerObservedAt = Date.now();
     if (!trackIncrease || !powerAcquisitionEnabled || !Number.isFinite(previous) || !Number.isFinite(amount) || amount <= previous) return;
+    // 저장에 실패하면 기준 잔액을 되돌려 다음 조회에서 같은 증가분을 다시 기록한다.
+    const rollback = () => {
+        if (cachedPowerChannelId === channelId && cachedPowerAmount === amount) {
+            cachedPowerAmount = previous;
+            cachedPowerObservedAt = previousAt;
+        }
+    };
     try {
         const { powerLogs = [] } = await chrome.storage.local.get("powerLogs");
         const alreadyLogged = powerLogs.filter(log => log.channelId === channelId &&
             Number.isFinite(log.amount) && log.amount > 0 && Date.parse(log.timestamp) >= previousAt)
             .reduce((sum, log) => sum + log.amount, 0);
         const unlogged = amount - previous - alreadyLogged;
-        if (unlogged > 0) await savePowerLog(channelId, unlogged, "OTHERS");
+        if (unlogged <= 0) return;
+        // 시청 보상 버튼을 누른 직후의 실제 잔액 증가만 view로 기록한다.
+        const view = pendingViewClaim?.channelId === channelId && Date.now() - pendingViewClaim.clickedAt < 120_000;
+        const claim = view ? pendingViewClaim : null;
+        if (view) pendingViewClaim = null;
+        // balanceAfter는 여러 탭이 같은 증가를 동시에 기록하는 중복을 저장소에서 막는다.
+        if (!await savePowerLog(channelId, unlogged, view ? "view" : "OTHERS", null, { balanceAfter: amount })) {
+            if (claim && !pendingViewClaim) pendingViewClaim = claim;
+            rollback();
+        }
     } catch (error) {
+        rollback();
         console.warn("[치지직 통나무 파워 자동 획득] 잔액 증가 로그 실패:", error);
     }
 }
@@ -1033,23 +1049,6 @@ function createClockBadge(timeText) {
     }
 }
 
-async function getViewPowerAmountBySubscription(channelId) {
-    try {
-        const res = await fetch(
-            `https://api.chzzk.naver.com/service/v1/channels/${channelId}/subscription`,
-            { credentials: "include" }
-        );
-        const data = await res.json();
-        const tierNo =
-            data && data.content && typeof data.content.tierNo === "number"
-                ? data.content.tierNo
-                : null;
-        if (tierNo === 1) return 120;
-        if (tierNo === 2) return 200;
-    } catch (e) {}
-    return 100;
-}
-
 async function clickPowerButtonIfExists() {
     if (!powerAcquisitionEnabled || powerClickBusy) return;
     const aside = document.querySelector("aside#aside-chatting");
@@ -1079,45 +1078,15 @@ async function clickPowerButtonIfExists() {
     if (btn) {
         powerClickBusy = true;
         try {
-        btn.click();
-        console.log(
-            "[치지직 통나무 파워 자동 획득] 자동 클릭: live_chatting_power_button"
-        );
-        // 로그 저장 (최근 1분 내 view 기록이 없을 때만 저장)
-        try {
-            const result = await chrome.storage.local.get(["powerLogs"]);
-            const logs = result.powerLogs || [];
-            const now = Date.now();
-            const hasRecentViewInStorage = logs.some(
-                (log) =>
-                    log &&
-                    log.method === "view" && log.channelId === channelId &&
-                    log.timestamp &&
-                    new Date(log.timestamp).getTime() >= now - 60 * 1000
-            );
-            const hasRecentViewInMemory =
-                lastViewChannelId === channelId && typeof lastViewLogTimestampMs === "number" &&
-                lastViewLogTimestampMs >= now - 60 * 1000;
-            if (!(hasRecentViewInStorage || hasRecentViewInMemory)) {
-                const amountToLog = await getViewPowerAmountBySubscription(channelId);
-                if (await savePowerLog(channelId, amountToLog, "view")) {
-                    lastViewLogTimestampMs = now; lastViewChannelId = channelId;
-                }
-            }
-        } catch (e) {
-            // 스토리지 조회 실패 시에는 기존 동작 유지
-            const now = Date.now();
-            const hasRecentViewInMemory =
-                lastViewChannelId === channelId && typeof lastViewLogTimestampMs === "number" &&
-                lastViewLogTimestampMs >= now - 60 * 1000;
-            if (!hasRecentViewInMemory) {
-                const amountToLog = await getViewPowerAmountBySubscription(channelId);
-                if (await savePowerLog(channelId, amountToLog, "view")) {
-                    lastViewLogTimestampMs = now; lastViewChannelId = channelId;
-                }
-            }
-        }
-        fetchAndUpdatePowerAmount();
+            // 클릭 전 잔액을 기준으로 잡아야 실제 지급량을 확인할 수 있다.
+            if (cachedPowerChannelId !== channelId || !Number.isFinite(cachedPowerAmount)) await fetchAndUpdatePowerAmount();
+            btn.click();
+            pendingViewClaim = { channelId, clickedAt: Date.now() };
+            console.log("[치지직 통나무 파워 자동 획득] 자동 클릭: live_chatting_power_button");
+            // 로그는 클릭 자체가 아니라 이후 조회에서 확인된 잔액 증가로만 남긴다.
+            for (const delay of [1500, 5000, 15000]) setTimeout(() => {
+                if (channelId === getChannelIdFromUrl()) fetchAndUpdatePowerAmount();
+            }, delay);
         } finally { powerClickBusy = false; }
     }
 }

@@ -132,7 +132,17 @@
   const trendThumbnail = (live) => (live.liveImageUrl || live.thumbnailImageUrl || live.defaultThumbnailImageUrl || "").replaceAll("{type}", "720");
   const actualQualityHeight = (media) => media?.readyState >= 2 && !media.error && Number.isFinite(media.videoHeight) && media.videoHeight > 0 ? media.videoHeight : null;
 
-  if (typeof module !== "undefined") module.exports = { chooseRecorderMime, startRecordingRecorder, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
+  // 녹화는 녹화 중인 video가 문서에서 사라지거나 다른 채널로 이동했을 때만 끝낸다.
+  // 버퍼링으로 readyState가 잠시 떨어지거나 PiP·광고로 "가장 큰 영상"이 바뀌어도
+  // 같은 video의 캡처는 계속 유효하다. src 교체/종료는 emptied·ended 리스너가 처리한다.
+  function shouldStopRecording(session, pathname, pipElement) {
+    if (!session?.source?.isConnected) return true;
+    if (session.channelPath === pathname) return false;
+    // PiP로 보던 영상은 사이트 안에서 다른 페이지로 이동해도 계속 재생되므로 유지한다.
+    return pipElement !== session.source;
+  }
+
+  if (typeof module !== "undefined") module.exports = { shouldStopRecording, chooseRecorderMime, startRecordingRecorder, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
   if (typeof document === "undefined") return;
   if (globalThis.__HANBI_CHZZK_TOOLS__) return;
   globalThis.__HANBI_CHZZK_TOOLS__ = true;
@@ -211,8 +221,12 @@
   let compressorGain = Number.isFinite(savedGain) ? Math.max(0, Math.min(2, savedGain)) : 1;
 
   const isLive = () => /^\/live\/[^/]+/.test(location.pathname);
+  const pipSupported = () => document.pictureInPictureEnabled === true && typeof HTMLVideoElement.prototype.requestPictureInPicture === "function";
 
   function video() {
+    // A video shown in the browser's PiP window is the one the user is watching.
+    const pip = document.pictureInPictureElement;
+    if (pip?.tagName === "VIDEO" && pip.isConnected && pip.readyState >= 2) return pip;
     return [...document.querySelectorAll("video")]
       .filter((item) => !item.closest("#hanbi-sidebar-hover-preview") && item.videoWidth && item.readyState >= 2 && item.getBoundingClientRect().width)
       .sort((a, b) => {
@@ -373,13 +387,29 @@
     }
   }
 
-  // Firefox 기본 PiP 사용: 확장 버튼은 사용자 요청으로 비활성화.
-  // async function togglePip() {
-  //   const source = video();
-  //   if (!source?.requestPictureInPicture) throw new Error("PIP를 지원하지 않는 영상입니다.");
-  //   if (document.pictureInPictureElement) await document.exitPictureInPicture();
-  //   else await source.requestPictureInPicture();
-  // }
+  // Firefox는 표준 PiP API가 없어 기본 PiP를 사용한다. Chrome 등 표준 API가 있는
+  // 브라우저에서만 PIP 버튼을 만든다. 녹화 중이면 녹화 중인 영상을 PiP로 띄운다.
+  async function togglePip() {
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+      return;
+    }
+    const source = (recording?.source?.isConnected && recording.source) || video();
+    if (!source?.requestPictureInPicture) throw new Error("PIP를 지원하지 않는 영상입니다.");
+    // 사이트가 PiP를 막아도 사용자가 직접 누른 버튼이므로 허용한다.
+    if (source.disablePictureInPicture) source.disablePictureInPicture = false;
+    source.removeAttribute("disablepictureinpicture");
+    await source.requestPictureInPicture();
+  }
+
+  function syncPipButton() {
+    const pipButton = document.getElementById("hanbi-pip-button");
+    if (!pipButton) return;
+    const active = Boolean(document.pictureInPictureElement);
+    pipButton.classList.toggle("is-recording", active);
+    pipButton.setAttribute("aria-pressed", String(active));
+    pipButton.title = active ? "PIP 종료" : "Picture in Picture";
+  }
 
   function resetRecording(session) {
     session.removeSourceListeners?.();
@@ -725,8 +755,8 @@
   function ensureTools() {
     const target = document.querySelector(".pzp-pc__bottom-buttons-right");
     const existing = document.getElementById("hanbi-player-tools");
-    // const hasPip = Boolean(video()?.requestPictureInPicture);
-    const signature = `${features.recorder}:${features.screenshot}:${isLive()}:${Boolean(rawRecording)}`;
+    const hasPip = pipSupported();
+    const signature = `${features.recorder}:${features.screenshot}:${isLive()}:${Boolean(rawRecording)}:${hasPip}`;
     if (!target) return;
     if (existing?.parentElement === target && existing.dataset.signature === signature) return;
     existing?.remove();
@@ -747,7 +777,11 @@
       root.appendChild(rawButton);
     }
     if (features.screenshot) root.appendChild(button("스크린샷", "SHOT", screenshot));
-    // if (hasPip) root.appendChild(button("Picture in Picture", "PIP", togglePip));
+    if (hasPip) {
+      const pipButton = button("Picture in Picture", "PIP", togglePip);
+      pipButton.id = "hanbi-pip-button";
+      root.appendChild(pipButton);
+    }
     if (isLive()) {
       const qualityButton = button("실제 영상 출력 화질", "Q --", () => {
         const source = video();
@@ -760,6 +794,7 @@
     }
     if (isLive()) root.appendChild(button("타임머신 · 영상이 제공하는 범위 탐색", "TM", showTimeMachine));
     target.prepend(root);
+    syncPipButton();
   }
 
   function selectedQualityRow(source) {
@@ -793,7 +828,7 @@
 
   function prepareVideo() {
     const source = video();
-    if (recording && (recording.source !== source || recording.channelPath !== location.pathname)) {
+    if (recording && shouldStopRecording(recording, location.pathname, document.pictureInPictureElement)) {
       if (recording.recorder.state !== 'inactive') recording.recorder.stop();
     }
     if (rawRecording && (rawRecording.source !== source || rawRecording.channelPath !== location.pathname)) {
@@ -1558,6 +1593,7 @@
   });
 
   document.addEventListener("keydown", handleArrowSeek, true);
+  for (const event of ["enterpictureinpicture", "leavepictureinpicture"]) document.addEventListener(event, () => { syncPipButton(); schedule(); }, true);
   for (const event of ['loadedmetadata', 'resize', 'emptied']) document.addEventListener(event, () => schedule(), true);
   document.addEventListener("pointerdown", resumeCompressor, true);
   document.addEventListener("keydown", resumeCompressor, true);

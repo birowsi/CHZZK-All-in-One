@@ -1,9 +1,35 @@
-# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-01)
+# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-02)
 
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 1.1.22, 작업 브랜치 `codex/chrome-compat`에서 `main`으로 fast-forward 반영. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+- 공통 소스·빌드 1.1.23 (2026-10-02, main). 1.1.22까지: 작업 브랜치 `codex/chrome-compat`에서 `main`으로 fast-forward 반영. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+
+## 2026-10-02 Chrome PIP 복구·PIP 중 녹화 유지·통나무 로그 검증 — 1.1.23
+
+### 요청과 원칙
+- 사용자 요청: 버그·작동 안 되는 기능 정리, Chrome PIP 버튼 복구, PIP 모드에서도 녹화 유지, 미확인 항목 확인. 이후 "지울 기능은 없고 고치라는 뜻"으로 정정했으므로 기능 삭제 없이 수정만 했다.
+- Claude in Chrome은 사용자 Chrome에 연결됐지만 `chzzk.naver.com`을 안전 정책으로 차단했다(사용자 사이트 허용과 무관한 오류). 이 작업 환경의 셸도 CHZZK에 접속할 수 없다. 따라서 이번 검증은 실제 방송이 아닌 Chromium + 가짜 플레이어 페이지 검사다.
+
+### 수정
+1. `tools.js` PIP: 표준 Picture-in-Picture API(`document.pictureInPictureEnabled`)가 있을 때만 `PIP` 버튼을 만든다. Chrome에는 생기고 Firefox(표준 API 없음, 기본 PiP 사용)에는 생기지 않는다. 녹화 중이면 녹화 중인 video를 PiP로 띄우고, 사이트의 `disablePictureInPicture`는 사용자가 누른 경우에만 해제한다. PiP 상태는 버튼 강조/aria-pressed로 표시한다.
+2. `tools.js` 녹화 유지(실제 결함): 기존 `prepareVideo`는 "가장 큰 재생 영상"이 녹화 중인 video와 다르면 녹화를 끝냈다. 버퍼링으로 readyState가 2 미만이 되거나, 광고/미리보기 등 더 큰 video가 나타나기만 해도 녹화가 끊겼다. 새 `shouldStopRecording`은 녹화 video가 문서에서 제거되거나 다른 경로로 이동했을 때만 끝낸다. 단 PiP로 보던 video는 사이트 내 이동 후에도 유지한다. src 교체·종료는 기존 emptied/ended 리스너가 처리한다. `video()`는 PiP 중인 video를 우선한다.
+3. `content.js` 통나무 시청 보상 로그(문서의 남은 문제 1·2·3):
+   - 버튼 클릭 직후 구독 등급으로 추정한 100/120/200을 기록하던 방식을 없앴다. 클릭 전 잔액을 기준으로 잡고 1.5/5/15초 뒤 `log-power` 잔액 증가가 확인될 때만 그 증가분을 `view`로 기록한다(2분 내 미확인 시 기록 없음). 다음 시청 보상 시각도 실제 지급 기준이 된다.
+   - 잔액 증가 로그 저장 실패 시 기준 잔액을 되돌려 다음 조회에서 재시도한다.
+   - 증가 로그에 `balanceAfter`를 넣고 `log-store.js`의 직렬화된 append에서 같은 채널·같은 잔액 증가 로그를 중복으로 막아 여러 탭의 OTHERS 중복을 없앴다.
+   - 사용하지 않게 된 `getViewPowerAmountBySubscription`과 관련 메모리 변수를 제거했다.
+
+### 검증
+- 자동: 단위 82/82, 기본 회귀 23/23, 오디오 19/19, UI 19/19(PIP 버튼 유무 포함). 새 회귀: 클릭만으로는 로그 없음, 확인된 증가만 view, 저장 실패 시 기준 복구, 두 탭 동시 기록 1건.
+- Chromium 141(Playwright) + Xvfb에 압축 해제 Chrome 빌드 설치, `chzzk.naver.com` 요청을 가짜 플레이어 페이지로 라우팅(`qa/chrome-pip-audio/`, 결과 `qa/chrome-pip-audio-1.1.23.json`):
+  - 버튼 `REC RAW SHOT PIP Q TM`. PIP 클릭 → 실제 PiP 진입, aria-pressed=true.
+  - REC 후 PiP → 더 큰 video 등장 → SPA 이동(`/lives`) → 다른 탭 전환 동안 녹화 유지, STOP 후 결과 창 13.9초·1280×720 WebM.
+  - 같은 시나리오의 1.1.22 tools.js는 더 큰 video가 나타나는 즉시 녹화가 끝났다(수정 전 결함 재현).
+  - COMP 출력 레벨(테스트 전용 AnalyserNode 탭, 배포 코드 무변경): OFF 큰/작은 소리 차 39.1dB → ON 34.2dB, 작은 소리 −61.1→−48.6dB, 게인 2는 +6.0dB.
+  - 플레이어 음소거 상태 REC 결과 파일: 원본 음량 그대로(피크 −18.4dB, 테스트 음원 최대값과 일치).
+- 미확인: 실제 CHZZK 방송에서의 위 동작, Firefox 실환경(이번 환경에 Firefox 없음), 실제 통나무 지급 응답, RAW/광고/GRID 실방송. 일시정지 버퍼의 약 2분 한도는 MSE 메모리 한계로 이번에 바꾸지 않았다.
+- 빌드: Windows PowerShell이 없는 연결 환경이라 build.ps1과 같은 파일 목록·manifest 변환을 Python/zip으로 수행했다(ZIP 항목 수·버전 확인).
 
 ## 2026-10-01 Firefox 컴프레서 컨트롤 간섭 경로 수정 — 1.1.22
 
@@ -36,7 +62,7 @@
 - manifest/package/package-lock 두 버전 및 Firefox/Chrome 패키지 manifest 1.1.22 일치. `dist/chzzk-all-in-one-firefox-v1.1.22.zip/.xpi`와 `dist/chzzk-all-in-one-chrome-v1.1.22/` 및 ZIP 생성. Firefox41/Chrome43 항목 유지, 패키지 tools.js와 소스 일치 확인. 이전 빌드와 바탕화면 폴더는 보존했다.
 - 로컬 XPI는 미서명 개발용이다. 일반 Firefox 영구 설치는 기존 AMO 부가 기능에 1.1.22 ZIP을 제출해 서명본을 받아야 한다. 이번에는 AMO 제출/서명/release/패키지 외부 업로드를 하지 않는다.
 - GitHub source 업데이트 완료: 수정 커밋 `d99d1fc`(1.1.22)을 main으로 fast-forward하고 `git push origin main codex/chrome-compat` 성공. 원격 main `dacc340→d99d1fc`, 원격 Chrome 분기 신규 생성. force push·reset·rebase·release 없이 원래 Git 이력을 보존했다. 이 완료 기록을 담은 후속 문서 커밋도 두 분기에 반영하며, 최종 SHA는 원격 ref와 로컬 HEAD 대조로 확인한다.
-- 남은 사용자 확인: 기존 Firefox 프로필에 1.1.22 반영 후 방송 탭 새로고침 → COMP OFF 유지 → ON 후 슬라이더를 중간이 아닌 위치로 움직여 즉시 되돌아가지 않는지 확인. 소리의 압축 ON/OFF 차이, REC 중 청취·음소거 녹화는 실제 환경에서 아직 확인하지 않았다. 증상이 남으면 즉시 초기화 시점의 실제 이벤트/컨트롤 교체를 조사해야 하며 이번 보강만으로 원인 확정·완전 정상화라고 표시하지 않는다.
+- 사용자 확인(2026-10-01): 수정 후 `잘되네. 좋다.`라고 답했다. 기존 Firefox에서 COMP 조작 직후 ON·중간값으로 돌아가던 문제는 사용자 확인으로 해결 처리한다. 별도 음향 측정 결과를 제공한 것은 아니므로 소리의 압축 ON/OFF 차이와 REC 중 청취·음소거 녹화 실환경 검증은 여전히 미확인이다. 사용자 확인은 위 임시 Firefox 자동 검사와 구분하며, 간섭 경로 중 어느 것이 사용자 환경의 직접 원인이었는지까지 확정하지 않는다.
 - 공통 개선/Chrome 작업 브랜치의 소스/로컬 빌드는 `1.1.21`다. 이전 1.1.12~1.1.20 작업을 로컬 커밋으로 보존했다. push/AMO 업로드/서명/릴리스는 하지 않았다.
 - 바탕화면 `C:\Users\hanbi\Desktop\opencode test\치지직\chzzk-all-in-one`과 비교해 추가 QA/인수인계 자료를 통합했다. 그쪽 파일은 수정·이동·삭제하지 않았다. 세부 원인·수정·검증은 문서 마지막 2026-09-29 절에 있다.
 

@@ -33,10 +33,12 @@ function powerProbe(logs = [], enabled = true) {
   const observed = { clicks: 0, saved: [] };
   const button = { textContent: '통나무 받기', classList: [], click() { observed.clicks++; } };
   const globals = {
-    badgeToggle: false, powerAcquisitionEnabled: enabled, powerClickBusy: false, lastViewChannelId: null, lastViewLogTimestampMs: null, console: quiet,
+    badgeToggle: false, powerAcquisitionEnabled: enabled, powerClickBusy: false, pendingViewClaim: null, console: quiet,
+    cachedPowerChannelId: 'channel-b', cachedPowerAmount: 1000, timers: [],
+    setTimeout(fn, delay) { globals.timers.push(delay); },
     document: { querySelector: () => ({ querySelectorAll: () => [button] }) },
-    getChannelIdFromUrl: () => 'channel-b', getViewPowerAmountBySubscription: async () => 100,
-    savePowerLog: async (...args) => { observed.saved.push(args); return true; }, fetchAndUpdatePowerAmount() {},
+    getChannelIdFromUrl: () => 'channel-b',
+    savePowerLog: async (...args) => { observed.saved.push(args); return true; }, fetchAndUpdatePowerAmount() { observed.fetches = (observed.fetches || 0) + 1; },
     chrome: { runtime: { sendMessage() {} }, storage: { local: { get: async () => ({ powerLogs: logs }) } } },
   };
   return { observed, button, globals, run: func('content.js', 'clickPowerButtonIfExists', globals) };
@@ -91,14 +93,16 @@ async function main() {
     const probe = powerProbe(); probe.button.disabled = true; await probe.run();
     assert.equal(probe.observed.clicks, 0); assert.equal(probe.observed.saved.length, 0);
   });
-  await check('POWER-CHANNEL: another channel must not suppress this channel log', async () => {
-    const probe = powerProbe([{ channelId: 'channel-a', method: 'view', timestamp: new Date().toISOString() }]);
-    await probe.run(); assert.equal(probe.observed.saved.length, 1);
+  await check('POWER-VIEW-PENDING: a click only marks a pending view claim; no guessed log is written', async () => {
+    const probe = powerProbe(); await probe.run();
+    assert.equal(probe.observed.clicks, 1);
+    assert.equal(probe.observed.saved.length, 0);
+    assert.equal(probe.globals.pendingViewClaim.channelId, 'channel-b');
+    assert.deepEqual(Array.from(probe.globals.timers), [1500, 5000, 15000]);
   });
-  await check('POWER-LOG-RETRY: failed log write does not suppress a later attempt', async () => {
-    const probe = powerProbe(); probe.globals.savePowerLog = async () => { probe.observed.saved.push('failed'); return false; };
-    await probe.run(); await probe.run();
-    assert.equal(probe.observed.saved.length, 2);
+  await check('POWER-VIEW-BASELINE: unknown balance is read before clicking', async () => {
+    const probe = powerProbe(); probe.globals.cachedPowerChannelId = 'channel-a'; await probe.run();
+    assert.equal(probe.observed.fetches, 1); assert.equal(probe.observed.clicks, 1);
   });
   await check('POWER-REACTIVATE: inactive channel keeps its status poll and resumes DOM checks', async () => {
     const cleared = [], updates = [], channelId = 'a'.repeat(32);
@@ -179,7 +183,7 @@ async function main() {
     let powerLogs = [];
     const ctx = vm.createContext({
       Date, Number, console: quiet, powerAcquisitionEnabled: true,
-      cachedPowerAmount: null, cachedPowerChannelId: null, cachedPowerObservedAt: 0,
+      cachedPowerAmount: null, cachedPowerChannelId: null, cachedPowerObservedAt: 0, pendingViewClaim: null,
       chrome: { storage: { local: { get: async () => ({ powerLogs }) } } },
       savePowerLog: async (...args) => { saved.push(args); return true; },
     });
@@ -197,6 +201,47 @@ async function main() {
     assert.equal(saved.length, 2);
     await ctx.recordPowerBalance('b', 900, false);
     assert.equal(saved.length, 2);
+    assert.equal(saved[0][4].balanceAfter, 200);
+  });
+  await check('POWER-VIEW-VERIFIED: only a confirmed increase after the click is logged as view', async () => {
+    const saved = [];
+    let ok = true;
+    const ctx = vm.createContext({
+      Date, Number, console: quiet, powerAcquisitionEnabled: true, pendingViewClaim: null,
+      cachedPowerAmount: null, cachedPowerChannelId: null, cachedPowerObservedAt: 0,
+      chrome: { storage: { local: { get: async () => ({ powerLogs: [] }) } } },
+      savePowerLog: async (...args) => { saved.push(args); return ok; },
+    });
+    vm.runInContext(extract('content.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'recordPowerBalance'), ctx);
+    await ctx.recordPowerBalance('a', 1000);
+    ctx.pendingViewClaim = { channelId: 'a', clickedAt: Date.now() };
+    await ctx.recordPowerBalance('a', 1000);
+    assert.equal(saved.length, 0, 'no increase means no view log');
+    ok = false;
+    await ctx.recordPowerBalance('a', 1120);
+    assert.deepEqual(Array.from(saved[0].slice(0, 3)), ['a', 120, 'view']);
+    assert.equal(ctx.cachedPowerAmount, 1000, 'failed write restores the baseline');
+    assert.equal(ctx.pendingViewClaim.channelId, 'a', 'failed write keeps the pending view claim');
+    ok = true;
+    await ctx.recordPowerBalance('a', 1120);
+    assert.deepEqual(Array.from(saved[1].slice(0, 3)), ['a', 120, 'view']);
+    assert.equal(ctx.pendingViewClaim, null);
+    await ctx.recordPowerBalance('a', 1220);
+    assert.equal(saved[2][2], 'OTHERS');
+  });
+  await check('POWER-LOG-DEDUPE: two tabs logging the same balance increase store one entry', async () => {
+    const { createStore } = require(path.join(repo, 'log-store.js'));
+    let data = { powerLogs: [] };
+    const api = { storage: {
+      local: { get: async () => data, set: async (value) => { data = { ...data, ...value }; } },
+      sync: { get: async () => ({}) } } };
+    let n = 0;
+    const store = createStore(api, () => `id${++n}`);
+    const log = { channelId: 'a', channelName: 'A', amount: 100, method: 'OTHERS', timestamp: new Date().toISOString(), balanceAfter: 500 };
+    await Promise.all([store({ op: 'append', log }), store({ op: 'append', log: { ...log } })]);
+    assert.equal(data.powerLogs.length, 1);
+    await store({ op: 'append', log: { ...log, balanceAfter: 600 } });
+    assert.equal(data.powerLogs.length, 2);
   });
   await check('CHAT-FONT: current and legacy chat message selectors are both styled', () => {
     const style = { textContent: '' };
@@ -764,6 +809,7 @@ async function uiMain() {
     const ctx = vm.createContext({
       recording: { recorder: { state: 'recording' } }, rawRecording: null, features: { recorder: true, screenshot: true }, video: () => ({}), isLive: () => true,
       button: (label, text, action) => ({ label, textContent: text, action, classList: { add() {} } }), screenshot() {}, showTimeMachine() {}, toggleRecording() {}, toggleRawRecording() {},
+      pipSupported: () => true, togglePip() {}, syncPipButton() {},
       document: {
         querySelector: () => target, getElementById: () => root,
         createElement: () => ({ dataset: {}, children: [], appendChild(el) { this.children.push(el); }, remove() { if (root === this) root = null; } }),
@@ -773,6 +819,9 @@ async function uiMain() {
     ctx.ensureTools(); root.children[0].textContent = 'STOP';
     ctx.features.screenshot = false; ctx.ensureTools(); assert.equal(root.children[0].textContent, 'STOP');
     ctx.features.recorder = false; ctx.rawRecording = { source: {} }; ctx.ensureTools(); assert.equal(root.children[0].textContent, 'STOP');
+    assert.ok(root.children.some((child) => child.id === 'hanbi-pip-button'), 'PIP button exists where the standard PiP API is available');
+    ctx.pipSupported = () => false; ctx.ensureTools();
+    assert.ok(!root.children.some((child) => child.id === 'hanbi-pip-button'), 'no PIP button without the standard API (Firefox)');
     ctx.rawRecording = null; ctx.ensureTools(); assert.equal(root.children.some(item => item.label === '방송 원본 조각 녹화 시작/저장'), false);
   });
   await check('TREND-FALLBACK: below-threshold lives still show the popular fallback', () => {

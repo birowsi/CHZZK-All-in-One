@@ -1,0 +1,64 @@
+{
+ "version": "1.1.23",
+ "date": "2026-10-02",
+ "environment": "Playwright Chromium 141 (chromium-1194) + Xvfb, unpacked Chrome build; fake chzzk.naver.com page via request routing (CHZZK itself unreachable from this environment). Not a real CHZZK broadcast.",
+ "pip_recording_new": {
+  "buttons": "['REC', 'RAW', 'SHOT', 'PIP', 'Q --', 'TM']",
+  "afterRec": "['STOP', 'RAW', 'SHOT', 'PIP', 'Q 720p', 'TM']",
+  "pipActive": "main",
+  "pipButtonPressed": "true",
+  "afterBiggerVideo": "True",
+  "afterSpaNav": "True",
+  "afterTabSwitch": "True",
+  "indicator": "● REC 00:13",
+  "resultVideo": "{'duration': 13.929, 'w': 1280, 'h': 720, 'text': 'CHZZK All-in-One · by hanbi 녹화 완료 테스트채널_20261001T152411 13.9초 · 5.9 MB · video/webm;codecs=vp9,opus 다운로드 원본 변환 없이 즉시 저장 MP4 변환 H.264 + AAC · 변환이 오래 걸릴 수 있음 GIF 640px · 15fps WebP 640px · 15fps 편집 후 저장 시작(초) 종료(초) 형식 MP4 WebM GIF WebP 잘라서 저장'}"
+ },
+ "pip_recording_old_1_1_22_baseline": {
+  "buttons": "['REC', 'RAW', 'SHOT', 'Q --', 'TM']",
+  "afterRec": "['STOP', 'RAW', 'SHOT', 'Q 720p', 'TM']",
+  "pipActive": "main",
+  "afterBiggerVideo": "False",
+  "afterSpaNav": "False",
+  "afterTabSwitch": "False"
+ },
+ "audio": {
+  "label_on": "COMP ON",
+  "on_gain1": {
+   "ctx": "running",
+   "loud_dB": -14.4,
+   "quiet_dB": -48.6,
+   "range_dB": 34.2
+  },
+  "label_off": "COMP OFF",
+  "off": {
+   "ctx": "running",
+   "loud_dB": -22.0,
+   "quiet_dB": -61.1,
+   "range_dB": 39.1
+  },
+  "on_gain2": {
+   "ctx": "running",
+   "loud_dB": -8.4,
+   "quiet_dB": -42.6,
+   "range_dB": 34.2
+  },
+  "muted_probe": {
+   "ctx": "running"
+  },
+  "muted_rec_file": "muted-rec.webm",
+  "muted_rec_audio": {
+   "RMS level dB": "-24.901143",
+   "Peak level dB": "-18.397410"
+  },
+  "muted_rec_streams": [
+   "Video: vp9",
+   "Audio: opus",
+   "Video: wrapped_avframe",
+   "Audio: pcm_s16le"
+  ]
+ },
+ "notes": [
+  "audio probe = test-only AnalyserNode tap prepended to tools.js in a throwaway copy; shipped tools.js unchanged",
+  "test media: 440Hz sine alternating 0.01/0.9 x ffmpeg default amplitude(1/8) every 1s"
+ ]
+}

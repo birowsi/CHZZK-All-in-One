@@ -30,6 +30,7 @@
           validate([request.log]);
           const duplicate = logs.some(l => l.channelId === request.log.channelId && (
             (request.log.eventKey && l.eventKey === request.log.eventKey) ||
+            (Number.isFinite(request.log.balanceAfter) && l.balanceAfter === request.log.balanceAfter) ||
             (request.log.method === 'view' && l.method === 'view' && Math.abs(Date.parse(l.timestamp) - Date.parse(request.log.timestamp)) < 60_000)
           ));
           if (!duplicate) next = [{ ...request.log, id: uuid() }, ...logs];
