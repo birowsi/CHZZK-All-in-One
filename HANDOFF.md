@@ -3,7 +3,30 @@
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 1.1.23 (2026-10-02, main). 1.1.22까지: 작업 브랜치 `codex/chrome-compat`에서 `main`으로 fast-forward 반영. 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 아래의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+- 공통 소스·빌드 **1.1.23**. `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.23.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.23/`와 ZIP. dist는 Git에 올리지 않는다.
+- 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
+
+## 지금 상태 한눈에 보기 (2026-10-02 기준)
+
+### 동작이 확인된 것
+- Chrome 1.1.23의 `PIP` 버튼과 PIP 중 REC 유지: 사용자가 설치해 써 보고 "잘 된다"고 확인(2026-10-02). 광고·버퍼링 등 세부 상황별 확인은 따로 받지 않았다.
+- Firefox COMP ON/OFF·슬라이더가 되돌아가던 문제: 1.1.22에서 사용자 확인으로 해결.
+- Chromium 테스트 페이지 측정(실방송 아님): PIP·더 큰 영상·사이트 내 이동·탭 전환 중 녹화 유지, 컴프레서 실제 압축, 음소거 상태 녹화의 원본 소리.
+- 자동 테스트: 단위 82, 기본 회귀 23, 오디오 19, UI 19 (합계 143) 통과.
+
+### 아직 확인하지 못한 것 (다음 우선순위 순)
+1. Firefox 1.1.23 실환경: 확장 `PIP` 버튼이 없는지, 기본 PiP 중 REC가 유지되는지, REC 중 청취·컴프레서 소리. 일반 Firefox에 영구 설치하려면 1.1.23 ZIP을 AMO에 제출해 서명본을 받아야 한다(문서상 AMO 승인 기록은 1.1.10이고, 2026-10-01 확인 때 사용자 Firefox에는 1.1.21 서명본이 설치돼 있었다. 1.1.22 이후 서명 여부는 기록이 없다).
+2. 통나무: 실제 1시간 시청 보상 후 로그 금액이 실제 잔액 증가와 같은지. 1.1.23부터 클릭만으로는 기록하지 않으므로, 버튼은 눌렸는데 로그가 없으면 `log-power` 잔액 조회(1.5/5/15초 뒤)가 증가를 못 본 것이다.
+3. RAW 녹화, 광고 건너뛰기, GRID 1080p, 팔로잉 알림·hover 미리보기의 실방송 동작.
+4. 일시정지 버퍼는 MSE 메모리 한계로 1080p에서 약 2분대까지만 쌓인다(1.1.16 실측). 더 길게 하려면 MSE 밖 저장 설계가 필요하다.
+
+### 원격(Claude 앱) 세션에서 작업할 때 알아둘 것
+- 연결된 PC 셸은 Windows가 아니라 폴더만 마운트된 리눅스 환경이다. `pwsh`가 없어 `build.ps1`을 못 돌리므로 같은 파일 목록·manifest 변환을 Python `zipfile`로 수행한다(Chrome 폴더 빌드는 `qa/chrome-pip-audio/build_chrome.py` 참고). Windows에서는 기존대로 `.\build.ps1`, `.\build.ps1 -Browser Chrome`.
+- 그 셸과 클라우드 작업 공간 모두 `chzzk.naver.com`과 GitHub에 접속할 수 없다. Claude in Chrome도 CHZZK를 안전 정책으로 차단한다. 실방송 확인은 사용자가 하고, push는 사용자가 Windows에서 `git push origin main codex/chrome-compat`를 실행한다(claude.ai Connectors에 GitHub를 연결하면 원격에서도 가능).
+- 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
+- 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
+- `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
 
 ## 2026-10-02 Chrome PIP 복구·PIP 중 녹화 유지·통나무 로그 검증 — 1.1.23
 
@@ -29,7 +52,8 @@
   - COMP 출력 레벨(테스트 전용 AnalyserNode 탭, 배포 코드 무변경): OFF 큰/작은 소리 차 39.1dB → ON 34.2dB, 작은 소리 −61.1→−48.6dB, 게인 2는 +6.0dB.
   - 플레이어 음소거 상태 REC 결과 파일: 원본 음량 그대로(피크 −18.4dB, 테스트 음원 최대값과 일치).
 - 미확인: 실제 CHZZK 방송에서의 위 동작, Firefox 실환경(이번 환경에 Firefox 없음), 실제 통나무 지급 응답, RAW/광고/GRID 실방송. 일시정지 버퍼의 약 2분 한도는 MSE 메모리 한계로 이번에 바꾸지 않았다.
-- 사용자 확인(2026-10-02): Chrome 1.1.23 PIP·녹화 "잘 된다". 이후 Firefox PIP 버튼 명시 제외를 추가하고 같은 1.1.23으로 다시 빌드해 GitHub에 반영했다.
+- 사용자 확인(2026-10-02): Chrome 1.1.23 PIP·녹화 "잘 된다". 이후 사용자 요청으로 Firefox PIP 버튼 명시 제외(`b087a76`)를 추가하고 같은 1.1.23으로 Firefox/Chrome 패키지를 다시 만들었다(패키지 tools.js와 소스 일치 확인).
+- GitHub: 원격 세션에서는 push할 수 없었다(PC 셸은 GitHub 차단, 클라우드는 GitHub 미연결). 사용자가 Windows에서 `git push origin main codex/chrome-compat`를 실행했고, 로컬 원격 추적 ref가 두 브랜치 모두 `b087a76`인 것을 확인했다. release 생성·AMO 제출은 하지 않았다.
 - 빌드: Windows PowerShell이 없는 연결 환경이라 build.ps1과 같은 파일 목록·manifest 변환을 Python/zip으로 수행했다(ZIP 항목 수·버전 확인).
 
 ## 2026-10-01 Firefox 컴프레서 컨트롤 간섭 경로 수정 — 1.1.22

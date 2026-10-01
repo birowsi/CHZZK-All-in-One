@@ -168,10 +168,11 @@ CHZZK URL / 채널 ID:
 
 ## 10. Picture-in-Picture
 
-- [ ] PIP-01 Firefox: 확장 `PIP` 버튼은 없고 Firefox 기본 PiP 기능을 사용할 수 있다.
+- [ ] PIP-01 Firefox: 확장 `PIP` 버튼은 없고 Firefox 기본 PiP 기능을 사용할 수 있다. (1.1.23 코드에서 UA로 명시 제외, 실제 Firefox 확인 필요)
 - [x] PIP-02 Chrome: `PIP` 클릭 시 PiP 진입, 다시 클릭 시 종료, 버튼 강조 표시. (1.1.23 Chromium 테스트 페이지)
 - [x] PIP-03 Chrome: REC 중 PiP → 더 큰 영상 등장·사이트 내 이동·탭 전환에도 녹화 유지, STOP 후 전체 길이 결과. (테스트 페이지, 1.1.22는 실패)
-- [ ] PIP-04 실제 CHZZK Chrome/Firefox에서 PIP·광고·버퍼링 중 REC 유지와 결과 길이 확인.
+- [x] PIP-04 실제 Chrome에서 PIP 버튼과 PIP 중 REC: 2026-10-02 사용자 확인 `잘 된다`. (광고·버퍼링 상황별 확인은 별도로 받지 않음)
+- [ ] PIP-05 실제 Firefox에서 기본 PiP·광고·버퍼링 중 REC 유지와 결과 길이 확인.
 
 ## 11. 자동 음소거 해제·광고 안내 제거
 
@@ -496,3 +497,5 @@ CHZZK URL / 채널 ID:
 - [x] 통나무: 클릭만으로 view 로그 없음, 잔액 증가 확인 시에만 기록, 저장 실패 재시도, 두 탭 동시 기록 1건 (모의 검사).
 - [ ] 실제 CHZZK에서 1시간 시청 보상 후 로그 금액이 실제 증가량과 같은지 확인.
 - [ ] Firefox 실환경 청취/DSP 및 REC 중 청취.
+- [x] GitHub: `main`·`codex/chrome-compat` 모두 `b087a76` push 확인(사용자가 Windows에서 실행). release·AMO 제출 없음.
+- [ ] Firefox 1.1.23 AMO 서명본 발급 및 영구 설치 확인.
