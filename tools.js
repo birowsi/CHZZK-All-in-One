@@ -221,7 +221,8 @@
   let compressorGain = Number.isFinite(savedGain) ? Math.max(0, Math.min(2, savedGain)) : 1;
 
   const isLive = () => /^\/live\/[^/]+/.test(location.pathname);
-  const pipSupported = () => document.pictureInPictureEnabled === true && typeof HTMLVideoElement.prototype.requestPictureInPicture === "function";
+  // Firefox는 자체 PiP 버튼이 있으므로 확장 PIP 버튼을 만들지 않는다.
+  const pipSupported = () => !navigator.userAgent.includes("Firefox") && document.pictureInPictureEnabled === true && typeof HTMLVideoElement.prototype.requestPictureInPicture === "function";
 
   function video() {
     // A video shown in the browser's PiP window is the one the user is watching.

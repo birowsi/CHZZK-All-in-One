@@ -12,7 +12,7 @@
 - Claude in Chrome은 사용자 Chrome에 연결됐지만 `chzzk.naver.com`을 안전 정책으로 차단했다(사용자 사이트 허용과 무관한 오류). 이 작업 환경의 셸도 CHZZK에 접속할 수 없다. 따라서 이번 검증은 실제 방송이 아닌 Chromium + 가짜 플레이어 페이지 검사다.
 
 ### 수정
-1. `tools.js` PIP: 표준 Picture-in-Picture API(`document.pictureInPictureEnabled`)가 있을 때만 `PIP` 버튼을 만든다. Chrome에는 생기고 Firefox(표준 API 없음, 기본 PiP 사용)에는 생기지 않는다. 녹화 중이면 녹화 중인 video를 PiP로 띄우고, 사이트의 `disablePictureInPicture`는 사용자가 누른 경우에만 해제한다. PiP 상태는 버튼 강조/aria-pressed로 표시한다.
+1. `tools.js` PIP: 표준 Picture-in-Picture API(`document.pictureInPictureEnabled`)가 있을 때만 `PIP` 버튼을 만든다. Chrome에는 생기고, Firefox는 자체 PiP 버튼이 있으므로 사용자 요청에 따라 UA 검사로 명시적으로 제외한다(표준 API 유무와 무관). 녹화 중이면 녹화 중인 video를 PiP로 띄우고, 사이트의 `disablePictureInPicture`는 사용자가 누른 경우에만 해제한다. PiP 상태는 버튼 강조/aria-pressed로 표시한다.
 2. `tools.js` 녹화 유지(실제 결함): 기존 `prepareVideo`는 "가장 큰 재생 영상"이 녹화 중인 video와 다르면 녹화를 끝냈다. 버퍼링으로 readyState가 2 미만이 되거나, 광고/미리보기 등 더 큰 video가 나타나기만 해도 녹화가 끊겼다. 새 `shouldStopRecording`은 녹화 video가 문서에서 제거되거나 다른 경로로 이동했을 때만 끝낸다. 단 PiP로 보던 video는 사이트 내 이동 후에도 유지한다. src 교체·종료는 기존 emptied/ended 리스너가 처리한다. `video()`는 PiP 중인 video를 우선한다.
 3. `content.js` 통나무 시청 보상 로그(문서의 남은 문제 1·2·3):
    - 버튼 클릭 직후 구독 등급으로 추정한 100/120/200을 기록하던 방식을 없앴다. 클릭 전 잔액을 기준으로 잡고 1.5/5/15초 뒤 `log-power` 잔액 증가가 확인될 때만 그 증가분을 `view`로 기록한다(2분 내 미확인 시 기록 없음). 다음 시청 보상 시각도 실제 지급 기준이 된다.
@@ -29,6 +29,7 @@
   - COMP 출력 레벨(테스트 전용 AnalyserNode 탭, 배포 코드 무변경): OFF 큰/작은 소리 차 39.1dB → ON 34.2dB, 작은 소리 −61.1→−48.6dB, 게인 2는 +6.0dB.
   - 플레이어 음소거 상태 REC 결과 파일: 원본 음량 그대로(피크 −18.4dB, 테스트 음원 최대값과 일치).
 - 미확인: 실제 CHZZK 방송에서의 위 동작, Firefox 실환경(이번 환경에 Firefox 없음), 실제 통나무 지급 응답, RAW/광고/GRID 실방송. 일시정지 버퍼의 약 2분 한도는 MSE 메모리 한계로 이번에 바꾸지 않았다.
+- 사용자 확인(2026-10-02): Chrome 1.1.23 PIP·녹화 "잘 된다". 이후 Firefox PIP 버튼 명시 제외를 추가하고 같은 1.1.23으로 다시 빌드해 GitHub에 반영했다.
 - 빌드: Windows PowerShell이 없는 연결 환경이라 build.ps1과 같은 파일 목록·manifest 변환을 Python/zip으로 수행했다(ZIP 항목 수·버전 확인).
 
 ## 2026-10-01 Firefox 컴프레서 컨트롤 간섭 경로 수정 — 1.1.22
