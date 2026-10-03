@@ -3,8 +3,8 @@
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 **1.1.28**(2026-10-04, 미커밋 빌드. 1.1.27은 커밋 `2740b5e`로 main·codex/chrome-compat에 push 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
-- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.28.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.28/`와 ZIP. dist는 Git에 올리지 않는다.
+- 공통 소스·빌드 **1.1.29**(2026-10-04, 미커밋 빌드). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.29.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.29/`와 ZIP. dist는 Git에 올리지 않는다.
 - 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
 
 ## 지금 상태 한눈에 보기 (2026-10-02 기준)
@@ -27,6 +27,14 @@
 - 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
 - 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
 - `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
+
+## 2026-10-04 Firefox REC 시작 시 소리가 커지는 문제 — 1.1.29
+
+- 사용자 제보: REC를 시작하면 볼륨이 커지는 느낌.
+- 실측(Firefox 157 headless, WebDriver BiDi로 직접 구동, 사인파 테스트 페이지): `createMediaElementSource`로 COMP 경로가 붙은 영상에 `mozCaptureStream()`을 호출해도 COMP 경로 RMS가 0.354로 그대로였고, 캡처 스트림에도 같은 0.354가 들어왔다. 확장은 Firefox에서 캡처 오디오를 별도 AudioContext로 다시 재생(청취 모니터)하므로, COMP를 그 영상에서 한 번이라도 켰으면(OFF여도 bypass 경로가 남음) 같은 소리가 두 번 나와 약 +6dB 커졌다. Chrome은 모니터를 쓰지 않아 해당 없음.
+- 수정(`tools.js`): 모니터 볼륨을 `source.muted || compressorGraphs.has(source) ? 0 : source.volume`으로 둔다. 녹화 중 COMP를 처음 켜 그래프가 생기면 `applyCompressorState` 끝에서 `monitorGraph.syncVolume()`으로 즉시 무음 처리한다. 녹화 파일은 캡처 스트림을 쓰므로 영향 없음.
+- 자동: 단위 84, 회귀 23, 오디오 20/20(새 AUDIO-MONITOR-NO-DOUBLE), UI 21. 빌드 1.1.29 Firefox 41/Chrome 43.
+- 미확인: COMP를 쓰지 않은 영상에서 mozCaptureStream이 직접 재생을 끊는다는 기존 전제(모니터 존재 이유)는 이번에 소리로 측정하지 않았다. 실방송 체감 확인 필요.
 
 ## 2026-10-04 RAW 저지연 HLS 부분 조각 지원 — 1.1.28
 

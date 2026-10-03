@@ -473,10 +473,12 @@
       for (const [name, value] of Object.entries(compressorDefaults)) compressor[name].value = value;
       gain.gain.value = compressorGain;
       input.connect(volume);
-      const syncVolume = () => { volume.gain.value = source.muted ? 0 : source.volume; };
+      // mozCaptureStream은 영상의 직접 재생만 끊고, COMP용 MediaElementSource 경로는 계속 소리를 낸다
+      // (Firefox 157 실측). 그 경로가 있으면 청취 경로까지 틀면 같은 소리가 두 번 나와 약 +6dB 커진다.
+      const syncVolume = () => { volume.gain.value = source.muted || compressorGraphs.has(source) ? 0 : source.volume; };
       syncVolume();
       source.addEventListener("volumechange", syncVolume);
-      monitorGraph = { source: volume, compressor, gain, context, mode: "" };
+      monitorGraph = { source: volume, compressor, gain, context, mode: "", syncVolume };
       syncMonitorCompressor();
       context.resume().catch(console.error);
       return () => {
@@ -709,6 +711,8 @@
     data.gain.gain.value = compressorGain;
     connectAudioGraph(data, compressorEnabled);
     if (data.ctx.state === "suspended") data.ctx.resume().catch(() => {});
+    // 녹화 중에 COMP를 처음 켜 MediaElementSource가 생기면 청취 경로를 무음으로 바꾼다.
+    monitorGraph?.syncVolume?.();
   }
 
   function syncMonitorCompressor() {

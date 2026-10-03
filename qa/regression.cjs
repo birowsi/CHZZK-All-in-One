@@ -515,6 +515,23 @@ async function audioMain() {
     assert.equal(graph.source.outputs[0], graph.context.destination);
     cleanup();
   });
+  await check('AUDIO-MONITOR-NO-DOUBLE: video already in the COMP graph is not monitored twice (Firefox +6 dB)', () => {
+    const p = audioProbe(), listeners = new Map();
+    const source = { muted: false, volume: 0.8, addEventListener: (key, fn) => listeners.set(key, fn), removeEventListener: key => listeners.delete(key) };
+    // COMP was used before REC: the element keeps playing through its MediaElementSource after capture.
+    p.ctx.compressorEnabled = true; p.ctx.applyCompressorState(source);
+    const cleanup = p.ctx.monitorFirefoxAudio(source, { getAudioTracks: () => [{}] });
+    assert.equal(p.ctx.monitorGraph.source.gain.value, 0);
+    listeners.get('volumechange')(); assert.equal(p.ctx.monitorGraph.source.gain.value, 0);
+    cleanup();
+    // COMP first enabled during REC: the monitor goes silent as soon as the element graph exists.
+    const q = audioProbe(), other = { muted: false, volume: 0.8, addEventListener() {}, removeEventListener() {} };
+    const stop = q.ctx.monitorFirefoxAudio(other, { getAudioTracks: () => [{}] });
+    assert.equal(q.ctx.monitorGraph.source.gain.value, 0.8);
+    q.ctx.compressorEnabled = true; q.ctx.applyCompressorState(other);
+    assert.equal(q.ctx.monitorGraph.source.gain.value, 0);
+    stop();
+  });
   await check('AUDIO-NO-TRACK: no audio track must not create a monitor', () => {
     const p = audioProbe(); assert.equal(p.ctx.monitorFirefoxAudio({}, { getAudioTracks: () => [] }), null); assert.equal(p.contexts.length, 0);
   });
