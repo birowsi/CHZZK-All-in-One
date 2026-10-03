@@ -36,6 +36,7 @@
 - `qa/chrome-e2e.cjs`: RAW 실패 시 특정 문구를 요구하던 단언을 제거하고 사유만 기록.
 - 자동: 단위 84/84(새 LL-HLS RAW 테스트: 중간 비독립 part 무시, 재전송·중복 전체 조각 무시, part→다음 조각 전체 연결, part 누락 시 부분 파일), 회귀 23, 오디오 19, UI 21. 빌드 Firefox 41/Chrome 43, manifest 1.1.28, 패키지 timeshift.js 일치.
 - AMO: 2026-10-04 `.\sign.ps1`로 1.1.28을 직접 배포(unlisted)로 제출·서명 완료. 서명본 `dist/signed-v1.1.28/7f27e59867454bfd8439-1.1.28.xpi`(스크립트가 버전·META-INF 서명 확인). sign.ps1은 이제 `git ls-files`에서 과거에 커밋된 `dist/`·`node_modules/`를 뺀 소스 ZIP(`dist/chzzk-all-in-one-source-v<버전>.zip`, 약 35MB)을 `--upload-source-code`로 함께 제출한다. 첫 시도는 PC 시계가 AMO보다 58초 빨라 `JWT iat ... invalid`로 거부됐고(제출 안 됨), 사용자가 Windows 시간 동기화 후 성공. API 키는 사용자 환경 변수 `WEB_EXT_API_KEY`/`WEB_EXT_API_SECRET`에 있다(값은 기록하지 않음).
+- GitHub 릴리스 `v1.1.28`(2026-10-04, 태그 `96de358`, latest): 자산 이름은 버전 없이 고정 — `CHZZK-All-in-One-Chrome.zip`(= `dist/chzzk-all-in-one-chrome-v<버전>.zip`, 파일이 ZIP 루트에 있음), `CHZZK-All-in-One-Firefox.xpi`(= AMO 서명본, `application/x-xpinstall`로 제공되어 Firefox에서 바로 설치 창). README의 `releases/latest/download/<자산 이름>` 링크가 이 이름에 의존하므로 다음 릴리스도 같은 이름으로 올린다. 준비 폴더 `dist/release-v<버전>/`(notes.md 포함). README는 일반 사용자용 설치·업데이트·버튼 안내를 위로, 기술 내용은 "개발자용 정보"로 옮겼다.
 - 미확인: 실제 확장에서 RAW 저장 파일의 재생·오디오(치지직 LLHLS는 오디오가 같은 조각에 들어 있는지 이번에 확인하지 않음 — 별도 오디오 트랙이면 기존 검사로 중단된다), 화질 자동 전환 시 중단 빈도.
 
 ## 2026-10-03 제한 중계 표시·채팅 부드럽게 올리기 — 1.1.25
