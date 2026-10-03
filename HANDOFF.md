@@ -1,10 +1,10 @@
-# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-03)
+# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-04)
 
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 **1.1.27**(2026-10-03, 미커밋 상태에서 빌드. 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
-- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.27.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.27/`와 ZIP. dist는 Git에 올리지 않는다.
+- 공통 소스·빌드 **1.1.28**(2026-10-04, 미커밋 빌드. 1.1.27은 커밋 `2740b5e`로 main·codex/chrome-compat에 push 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.28.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.28/`와 ZIP. dist는 Git에 올리지 않는다.
 - 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
 
 ## 지금 상태 한눈에 보기 (2026-10-02 기준)
@@ -27,6 +27,16 @@
 - 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
 - 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
 - `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
+
+## 2026-10-04 RAW 저지연 HLS 부분 조각 지원 — 1.1.28
+
+- 사용자 제보: RAW가 모든 방송에서 `저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다`로 중단(기존 HANDOFF의 1.1.16·실방송 QA 기록과 일치). 원인: 치지직 플레이어는 LLHLS를 쓰고 hls.js가 `hlsFragLoaded`를 부분 조각(part)마다 보내는데, `createRawRecorder`가 part를 보면 무조건 실패 처리했다.
+- 실제 방송 확인(채널 `75cbf189…`, 2026-10-04): LLHLS 재생 목록은 fMP4(`EXT-X-MAP`), 2초 조각당 1초 part 2개, 모든 part `INDEPENDENT=YES`, part는 `moof`로 시작. 한 조각의 part 2개를 이어 붙인 바이트가 같은 조각 전체 파일과 **완전히 일치**(775,987바이트).
+- 수정(`timeshift.js`): part를 같은 조각 안에서 번호 순서대로 연결한다. 시작은 조각 전체·0번 part·독립 part에서만. 이미 받은 조각/part 재전송, part 뒤에 온 같은 조각 전체는 건너뛴다. 같은 조각 안 part 번호가 건너뛰거나 조각 번호가 건너뛰면 기존처럼 부분 파일 저장 후 중단. 한계: 조각의 마지막 part가 빠진 채 다음 조각 0번 part가 오면 감지하지 못한다(조각당 part 수를 알 수 없음).
+- `qa/chrome-e2e.cjs`: RAW 실패 시 특정 문구를 요구하던 단언을 제거하고 사유만 기록.
+- 자동: 단위 84/84(새 LL-HLS RAW 테스트: 중간 비독립 part 무시, 재전송·중복 전체 조각 무시, part→다음 조각 전체 연결, part 누락 시 부분 파일), 회귀 23, 오디오 19, UI 21. 빌드 Firefox 41/Chrome 43, manifest 1.1.28, 패키지 timeshift.js 일치.
+- AMO: 2026-10-04 `.\sign.ps1`로 1.1.28을 직접 배포(unlisted)로 제출·서명 완료. 서명본 `dist/signed-v1.1.28/7f27e59867454bfd8439-1.1.28.xpi`(스크립트가 버전·META-INF 서명 확인). sign.ps1은 이제 `git ls-files`에서 과거에 커밋된 `dist/`·`node_modules/`를 뺀 소스 ZIP(`dist/chzzk-all-in-one-source-v<버전>.zip`, 약 35MB)을 `--upload-source-code`로 함께 제출한다. 첫 시도는 PC 시계가 AMO보다 58초 빨라 `JWT iat ... invalid`로 거부됐고(제출 안 됨), 사용자가 Windows 시간 동기화 후 성공. API 키는 사용자 환경 변수 `WEB_EXT_API_KEY`/`WEB_EXT_API_SECRET`에 있다(값은 기록하지 않음).
+- 미확인: 실제 확장에서 RAW 저장 파일의 재생·오디오(치지직 LLHLS는 오디오가 같은 조각에 들어 있는지 이번에 확인하지 않음 — 별도 오디오 트랙이면 기존 검사로 중단된다), 화질 자동 전환 시 중단 빈도.
 
 ## 2026-10-03 제한 중계 표시·채팅 부드럽게 올리기 — 1.1.25
 

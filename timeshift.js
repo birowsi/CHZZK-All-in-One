@@ -232,20 +232,34 @@
       if (session) throw new Error("RAW 녹화가 이미 진행 중입니다.");
       if (!hls?.on || !hls?.off || !media || (hls.media && hls.media !== media)) throw new Error("본방송 HLS 플레이어를 찾지 못했습니다. 기존 REC를 이용해 주세요.");
       lastError = "";
-      const current = { hls, media, chunks: [], format: "", level: null, lastSn: null, onFragment: null };
+      // lastPart: 마지막으로 받은 저지연 HLS 부분 조각 번호. null이면 lastSn 조각 전체를 받은 상태다.
+      const current = { hls, media, chunks: [], format: "", level: null, lastSn: null, lastPart: null, onFragment: null };
       current.onFragment = (_, data) => {
         const frag = data?.frag;
         if (frag?.type === "audio") return fail("오디오가 별도 트랙인 방송은 RAW로 합칠 수 없습니다. 기존 REC를 이용해 주세요.");
         if (frag?.type !== "main" || !Number.isInteger(frag.sn)) return;
-        if (data.part) return fail("저지연 HLS 부분 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요.");
         if (frag.encrypted) return fail("암호화된 방송 조각은 RAW 저장을 지원하지 않습니다. 기존 REC를 이용해 주세요.");
+        // 저지연 HLS(LL-HLS)는 한 조각을 부분 조각(part)으로 나눠 받는다. 같은 조각의 부분 조각을
+        // 순서대로 이어 붙이면 전체 조각과 같은 바이트가 되므로 그대로 연결한다.
+        const part = data.part ? Number(data.part.index) : null;
+        if (part !== null && !Number.isInteger(part)) return fail("저지연 HLS 부분 조각 번호를 확인할 수 없습니다. 기존 REC를 이용해 주세요.");
+        if (current.lastSn === null) {
+          // 첫 조각은 키프레임으로 시작해야 재생할 수 있다. 독립 부분 조각이 올 때까지 기다린다.
+          if (part !== null && part !== 0 && !data.part.independent) return;
+        } else {
+          const sameSn = frag.sn === current.lastSn;
+          const nextSn = frag.sn === current.lastSn + 1;
+          // 이미 받은 조각·부분 조각의 재전송(또는 부분 조각 뒤에 온 같은 조각 전체)은 건너뛴다.
+          if (frag.sn < current.lastSn || (sameSn && (current.lastPart === null || part === null || part <= current.lastPart))) return;
+          const continues = sameSn ? part === current.lastPart + 1 : nextSn && (part === null || part === 0);
+          if (!continues) return fail("방송 조각이 누락되거나 재생 위치가 바뀌었습니다. 기존 REC를 이용해 주세요.");
+        }
         const bytes = bytesOf(data.payload);
         if (!bytes?.length) return;
         const format = formatOf(bytes);
         if (!format) return fail("방송 조각 형식을 확인할 수 없습니다. 기존 REC를 이용해 주세요.");
         if (current.format && current.format !== format) return fail("방송 조각 형식이 바뀌었습니다. 기존 REC를 이용해 주세요.");
         if (current.level !== null && current.level !== frag.level) return fail("녹화 중 화질이 바뀌어 RAW 파일 연결을 중단했습니다. 기존 REC를 이용해 주세요.");
-        if (current.lastSn !== null && frag.sn !== current.lastSn + 1) return fail("방송 조각이 누락되거나 재생 위치가 바뀌었습니다. 기존 REC를 이용해 주세요.");
         if (!current.format && format === "mp4") {
           const init = bytesOf(frag.initSegment?.data);
           if (!init?.length || String.fromCharCode(...init.subarray(4, 8)) !== "ftyp") return fail("MP4 시작 조각을 찾지 못했습니다. 기존 REC를 이용해 주세요.");
@@ -254,6 +268,7 @@
         current.format = format;
         current.level = frag.level;
         current.lastSn = frag.sn;
+        current.lastPart = part;
         current.chunks.push(bytes.slice());
       };
       session = current;

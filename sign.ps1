@@ -8,6 +8,7 @@ $version = (Get-Content -Raw (Join-Path $PSScriptRoot "manifest.json") | Convert
 $dist = Join-Path $PSScriptRoot "dist"
 $sourceZip = Join-Path $dist "chzzk-all-in-one-firefox-v$version.zip"
 $signedDir = Join-Path $dist "signed-v$version"
+$sourceArchive = Join-Path $dist "chzzk-all-in-one-source-v$version.zip"
 $stage = Join-Path $dist ("sign-stage-" + [guid]::NewGuid().ToString("N"))
 $distFull = [IO.Path]::GetFullPath($dist).TrimEnd([char]'\', [char]'/')
 $stageFull = [IO.Path]::GetFullPath($stage)
@@ -24,7 +25,20 @@ if (Test-Path -LiteralPath $signedDir) {
 New-Item -ItemType Directory -Path $stage, $signedDir -Force | Out-Null
 try {
     Expand-Archive -LiteralPath $sourceZip -DestinationPath $stage -Force
-    & npx --yes --cache (Join-Path $dist "npm-cache") web-ext@10.6.0 --no-config-discovery sign --channel=unlisted --source-dir $stage --artifacts-dir $signedDir
+    # AMO reviewers need readable source for the vendored minified hls.js/FFmpeg files (see AMO-SOURCE-README.md).
+    $fileList = Join-Path $stage "..\source-files-$version.txt"
+    Push-Location $PSScriptRoot
+    try {
+        # Old builds and node_modules were committed historically; reviewers need neither.
+        git ls-files | Where-Object { $_ -notmatch '^(dist|node_modules)/' } | Set-Content -LiteralPath $fileList -Encoding utf8
+        if (Test-Path -LiteralPath $sourceArchive) { Remove-Item -LiteralPath $sourceArchive -Force }
+        & tar.exe -a -c -f $sourceArchive -T $fileList
+        if ($LASTEXITCODE -ne 0) { throw "Source archive failed (exit $LASTEXITCODE)." }
+    } finally {
+        Pop-Location
+        Remove-Item -LiteralPath $fileList -Force -ErrorAction SilentlyContinue
+    }
+    & npx --yes --cache (Join-Path $dist "npm-cache") web-ext@10.6.0 --no-config-discovery sign --channel=unlisted --source-dir $stage --artifacts-dir $signedDir --upload-source-code $sourceArchive
     if ($LASTEXITCODE -ne 0) { throw "Mozilla signing failed (exit $LASTEXITCODE)." }
 
     $signedXpi = Get-ChildItem -LiteralPath $signedDir -Filter "*.xpi" -File |
@@ -45,6 +59,9 @@ try {
         }
     } finally { $zip.Dispose() }
     Write-Output $signedXpi.FullName
+    $downloadUrl = & node (Join-Path $PSScriptRoot "qa/amo-download-url.mjs") $version
+    if ($LASTEXITCODE -eq 0 -and $downloadUrl) { Write-Output "AMO download (owner login): $downloadUrl" }
+    else { Write-Warning "Signed, but the AMO download URL could not be read." }
 } finally {
     if (Test-Path -LiteralPath $stageFull) { Remove-Item -LiteralPath $stageFull -Recurse -Force }
 }

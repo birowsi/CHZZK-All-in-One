@@ -306,3 +306,38 @@ test("RAW 버튼 명령은 본방송 HLS에만 연결하고 저장 링크를 만
   assert.deepEqual(links, [{ name: "test.ts", url: "blob:test" }]);
   assert.equal(hlsListeners.size, 0);
 });
+
+test("RAW는 저지연 HLS 부분 조각을 순서대로 이어 붙이고 재전송은 건너뛴다", async () => {
+  const listeners = new Map(), media = {};
+  const hls = { media, on(name, fn) { listeners.set(name, fn); }, off(name, fn) { if (listeners.get(name) === fn) listeners.delete(name); } };
+  const box = (name, fill) => { const data = new Uint8Array(16).fill(fill); data.set([...name].map(c => c.charCodeAt(0)), 4); data.fill(0, 0, 4); return data; };
+  const init = box("ftyp", 1);
+  const emit = (sn, index, fill, independent = index === 0) => listeners.get("hlsFragLoaded")?.("hlsFragLoaded", {
+    frag: { type: "main", sn, level: 0, initSegment: { data: init } },
+    part: index === null ? null : { index, independent }, payload: box("moof", fill).buffer,
+  });
+  const recorder = createRawRecorder();
+  recorder.start(hls, media);
+  emit(10, 1, 9, false);        // 키프레임이 아닌 중간 부분 조각에서는 시작하지 않는다
+  emit(10, 2, 2, true);         // 독립 부분 조각부터 시작
+  emit(10, 3, 3);
+  emit(10, 3, 3);               // 재전송
+  emit(10, null, 8);            // 같은 조각 전체는 중복
+  emit(11, 0, 4);
+  emit(11, 1, 5);
+  emit(12, null, 6);            // 다음 조각 전체
+  const mp4 = recorder.stop();
+  assert.equal(mp4.ext, "mp4");
+  const bytes = new Uint8Array(await mp4.blob.arrayBuffer());
+  assert.equal(bytes.length, 16 * 6);
+  assert.deepEqual([...bytes].filter((_, index) => index % 16 === 15), [1, 2, 3, 4, 5, 6]);
+
+  let failure = "", partial;
+  const guarded = createRawRecorder((message, result) => { failure = message; partial = result; });
+  guarded.start(hls, media);
+  emit(20, 0, 1);
+  emit(20, 2, 3);               // 1번 부분 조각 누락
+  assert.match(failure, /누락/);
+  assert.equal(partial.blob.size, 32);
+  assert.equal(guarded.active(), false);
+});

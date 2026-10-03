@@ -1,6 +1,6 @@
-# AMO reviewer source and build notes — CHZZK All-in-One 1.1.10
+# AMO reviewer source and build notes — CHZZK All-in-One 1.1.28
 
-This archive contains the readable extension source, the packaged third-party files, `package-lock.json`, tests, and the packaging script. The submitted add-on ZIP is `chzzk-all-in-one-firefox-v1.1.10.zip`. No first-party JavaScript is transpiled, bundled, or minified during packaging. `build.ps1` copies the listed files into a ZIP without changing their contents.
+This archive contains the readable extension source, the packaged third-party files, `package-lock.json`, tests, and the packaging script. The submitted add-on ZIP is `chzzk-all-in-one-firefox-v1.1.28.zip`. No first-party JavaScript is transpiled, bundled, or minified during packaging. `build.ps1` copies the listed files into a ZIP without changing their contents.
 
 ## Reproduce the submitted package
 
@@ -10,7 +10,7 @@ On Windows 10/11 with PowerShell and the built-in `tar.exe`, extract this source
 .\build.ps1 -ZipOnly
 ```
 
-The result is `dist/chzzk-all-in-one-firefox-v1.1.10.zip`. Compare the contents of each ZIP entry to the uploaded extension; ZIP container metadata may differ. Node.js 22+ and `npm ci` are needed only to run `npm run test:all`, not to package the extension.
+The result is `dist/chzzk-all-in-one-firefox-v1.1.28.zip`. Compare the contents of each ZIP entry to the uploaded extension; ZIP container metadata may differ. Node.js 22+ and `npm ci` are needed only to run `npm run test:all`, not to package the extension.
 
 ## Included third-party code
 
