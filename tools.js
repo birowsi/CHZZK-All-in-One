@@ -132,6 +132,24 @@
   const trendThumbnail = (live) => (live.liveImageUrl || live.thumbnailImageUrl || live.defaultThumbnailImageUrl || "").replaceAll("{type}", "720");
   const actualQualityHeight = (media) => media?.readyState >= 2 && !media.error && Number.isFinite(media.videoHeight) && media.videoHeight > 0 ? media.videoHeight : null;
 
+  // live-detail의 재생 정보에서 서버가 실제로 제공하는 최고 영상 높이를 읽는다(오디오 전용 트랙 제외).
+  // 월드컵·아시안게임 같은 제한 중계는 480p 이하만 제공한다.
+  function maxPlaybackHeight(content) {
+    let height = 0;
+    for (const value of [content?.livePlaybackJson, content?.playbackJson]) {
+      let playback = value;
+      try { if (typeof value === "string") playback = JSON.parse(value); } catch (_) { continue; }
+      for (const media of Array.isArray(playback?.media) ? playback.media : []) {
+        for (const track of media?.encodingTrack || media?.e || []) {
+          const trackHeight = Number(track?.videoHeight);
+          if (Number.isFinite(trackHeight) && trackHeight > height) height = trackHeight;
+        }
+      }
+    }
+    return height;
+  }
+  const isRestrictedPlayback = (height) => height > 0 && height < 720;
+
   // 녹화는 녹화 중인 video가 문서에서 사라지거나 다른 채널로 이동했을 때만 끝낸다.
   // 버퍼링으로 readyState가 잠시 떨어지거나 PiP·광고로 "가장 큰 영상"이 바뀌어도
   // 같은 video의 캡처는 계속 유효하다. src 교체/종료는 emptied·ended 리스너가 처리한다.
@@ -142,7 +160,7 @@
     return pipElement !== session.source;
   }
 
-  if (typeof module !== "undefined") module.exports = { shouldStopRecording, chooseRecorderMime, startRecordingRecorder, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight };
+  if (typeof module !== "undefined") module.exports = { shouldStopRecording, chooseRecorderMime, startRecordingRecorder, recordingVideoBitrate, isBlindNotice, isAdBlockNotice, isBlockedPromoNotice, popupRemovalRoot, needsFirefoxAudioMonitor, captureReusePlan, calculateTrendOffset, clampSeekTime, seekableTarget, isFollowingSectionLabel, compressorDefaults, connectAudioGraph, selectTrendStreams, trendThumbnail, actualQualityHeight, maxPlaybackHeight, isRestrictedPlayback };
   if (typeof document === "undefined") return;
   if (globalThis.__HANBI_CHZZK_TOOLS__) return;
   globalThis.__HANBI_CHZZK_TOOLS__ = true;
@@ -164,6 +182,7 @@
     chatFontSizeEnabled: false,
     sidebarRefresh: true,
     hoverPreview: true,
+    chatSmooth: true,
   };
   const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100, brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
   let features = { ...defaults };
@@ -193,6 +212,11 @@
   const originalMessages = new WeakMap();
   let dismissedPopups = new WeakSet();
   let timeMachineTimer = null;
+  let playbackLimit = { path: "", height: 0, checkedAt: 0 };
+  let playbackLimitPending = false;
+  const chatAnimated = new WeakSet();
+  let chatWrapper = null;
+  let chatObserver = null;
   let timeShiftError = "";
   let timeShiftRequestId = 0;
   function timeShift(command, time) {
@@ -237,12 +261,23 @@
       })[0] || null;
   }
 
+  // Only the fullscreen element's subtree is rendered in fullscreen, so overlays live there.
+  const overlayHost = () => document.fullscreenElement || document.body;
+  const overlayIds = ["hanbi-tool-status", "hanbi-recording-indicator", "hanbi-screenshot-preview", "hanbi-time-machine", "hanbi-following-alerts"];
+  function moveOverlays() {
+    const host = overlayHost();
+    for (const id of overlayIds) {
+      const overlay = document.getElementById(id);
+      if (overlay && overlay.parentElement !== host) host.appendChild(overlay);
+    }
+  }
+
   function status(message, error = false) {
     let toast = document.getElementById("hanbi-tool-status");
     if (!toast) {
       toast = document.createElement("div");
       toast.id = "hanbi-tool-status";
-      document.body.appendChild(toast);
+      overlayHost().appendChild(toast);
     }
     toast.textContent = message;
     toast.classList.toggle("is-error", error);
@@ -293,7 +328,7 @@
       overlay = document.createElement("div");
       overlay.id = "hanbi-screenshot-preview";
       overlay.innerHTML = '<div class="hanbi-preview-title"><strong>스크린샷 미리보기</strong><span>드래그해서 이동</span><div><button type="button" data-save>저장</button><button type="button" data-close aria-label="닫기">×</button></div></div><img alt="스크린샷 미리보기">';
-      (document.fullscreenElement || document.body).appendChild(overlay);
+      overlayHost().appendChild(overlay);
       const handle = overlay.querySelector(".hanbi-preview-title");
       handle.addEventListener("pointerdown", (event) => {
         if (event.target.closest("button")) return;
@@ -510,7 +545,7 @@
   function showRecordingIndicator(session) {
     const indicator = document.createElement("div");
     indicator.id = "hanbi-recording-indicator";
-    document.body.appendChild(indicator);
+    overlayHost().appendChild(indicator);
     session.indicator = indicator;
     const update = () => {
       const seconds = Math.floor((Date.now() - session.startedAt) / 1000);
@@ -788,7 +823,8 @@
         const source = video();
         const actual = source?.closest('#preAdPlayerWrapper, #midAdPlayerWrapper') ? null : actualQualityHeight(source);
         const selected = selectedQualityRow(source)?.querySelector('.pzp-ui-setting-quality-item__prefix')?.textContent?.trim();
-        status(`실제 출력: ${actual ? `${actual}p` : '확인 중'}${selected ? ` · 사이트 선택: ${selected}` : ''}`);
+        const limit = playbackLimit.path === location.pathname && isRestrictedPlayback(playbackLimit.height) ? playbackLimit.height : 0;
+        status(`실제 출력: ${actual ? `${actual}p` : '확인 중'}${selected ? ` · 사이트 선택: ${selected}` : ''}${limit ? ` · 제한 중계(서버 제공 최고 ${limit}p)` : ''}`);
       });
       qualityButton.id = "hanbi-quality-button";
       root.appendChild(qualityButton);
@@ -803,14 +839,42 @@
     return pane?.querySelector('li.pzp-ui-setting-quality-item.pzp-ui-setting-pane-item--checked, li.pzp-ui-setting-quality-item[aria-checked="true"]') || null;
   }
 
+  // 방송마다(그리고 같은 방송도 1분마다) 서버가 제공하는 최고 화질을 확인한다.
+  async function refreshPlaybackLimit() {
+    const path = location.pathname;
+    const channelId = path.match(/^\/live\/([a-f0-9]{32})/i)?.[1];
+    if (!channelId || playbackLimitPending) return;
+    if (playbackLimit.path === path && Date.now() - playbackLimit.checkedAt < 60_000) return;
+    playbackLimitPending = true;
+    let height = playbackLimit.path === path ? playbackLimit.height : 0;
+    try {
+      const response = await fetch(`https://api.chzzk.naver.com/service/v3.3/channels/${channelId}/live-detail`, {
+        credentials: "include", signal: AbortSignal.timeout(8_000),
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        if (payload?.code === 200) height = maxPlaybackHeight(payload.content);
+      }
+    } catch (_) {}
+    finally {
+      playbackLimitPending = false;
+      if (location.pathname === path) playbackLimit = { path, height, checkedAt: Date.now() };
+    }
+    syncQualityDisplay();
+  }
+
   function syncQualityDisplay() {
     const source = video();
     const actual = source?.closest('#preAdPlayerWrapper, #midAdPlayerWrapper') ? null : actualQualityHeight(source);
     const button = document.getElementById('hanbi-quality-button');
     if (button) {
-      const label = actual ? `Q ${actual}p` : 'Q --';
+      refreshPlaybackLimit();
+      const limit = playbackLimit.path === location.pathname && isRestrictedPlayback(playbackLimit.height) ? playbackLimit.height : 0;
+      const label = `${actual ? `Q ${actual}p` : 'Q --'}${limit ? ' 제한' : ''}`;
       if (button.textContent !== label) button.textContent = label;
-      button.title = actual ? `실제 디코딩된 영상: ${source.videoWidth}×${actual}` : '실제 영상 화질 확인 중';
+      button.classList.toggle("is-limited", Boolean(limit));
+      button.title = (actual ? `실제 디코딩된 영상: ${source.videoWidth}×${actual}` : '실제 영상 화질 확인 중')
+        + (limit ? ` · 제한 중계: 서버가 이 방송을 최고 ${limit}p까지만 제공합니다` : '');
     }
     const selected = actual ? selectedQualityRow(source) : null;
     const siteHeight = Number(selected?.querySelector('.pzp-ui-setting-quality-item__prefix')?.textContent?.match(/(\d{3,4})p/i)?.[1]);
@@ -832,7 +896,9 @@
     if (recording && shouldStopRecording(recording, location.pathname, document.pictureInPictureElement)) {
       if (recording.recorder.state !== 'inactive') recording.recorder.stop();
     }
-    if (rawRecording && (rawRecording.source !== source || rawRecording.channelPath !== location.pathname)) {
+    // RAW copies HLS fragments in the page; a buffering stall (video() → null) or a
+    // larger ad/preview video must not end it. Player swaps are detected page-side.
+    if (rawRecording && (!rawRecording.source.isConnected || rawRecording.channelPath !== location.pathname)) {
       try { rawCommand("stop"); } catch (error) { console.warn("[CHZZK All-in-One RAW]", error); }
       rawRecording = null;
     }
@@ -891,7 +957,7 @@
     panel.id = "hanbi-time-machine";
     panel.ariaLabel = "타임머신 탐색";
     panel.innerHTML = '<header><strong>타임머신</strong><button type="button" data-close aria-label="타임머신 닫기">×</button></header><p role="status"></p><button type="button" data-enable>연결 재시도</button><input type="range" aria-label="영상 탐색 위치" step="0.1"><footer><button type="button" data-seek="-30">−30초</button><button type="button" data-seek="30">+30초</button><button type="button" data-live>LIVE</button></footer>';
-    (document.fullscreenElement || document.body).appendChild(panel);
+    overlayHost().appendChild(panel);
     const diagnostics = document.createElement("details");
     diagnostics.innerHTML = '<summary>재생 진단 정보</summary><textarea readonly aria-label="복사할 재생 진단 정보"></textarea>';
     diagnostics.addEventListener("toggle", () => {
@@ -987,7 +1053,7 @@
       stack = document.createElement("section");
       stack.id = "hanbi-following-alerts";
       stack.ariaLabel = "팔로잉 채널 방송 시작 알림";
-      document.body.appendChild(stack);
+      overlayHost().appendChild(stack);
     }
     const key = `${entry.channelId}:${entry.liveKey}`;
     if ([...stack.children].some((card) => card.dataset.key === key)) return false;
@@ -1156,6 +1222,41 @@
       features.chatFontSizeEnabled ? `aside#aside-chatting [role='log'] [class*='_chatting_message_'] > [class*='_text_'], [class*='live_chatting_message_text'], [data-message-text] { font-size: ${trendOptions.chatFontSize}px !important; }` : "",
     ].filter(Boolean).join("\n");
     if (style.textContent !== css) style.textContent = css;
+  }
+
+  // 치지직 채팅 목록은 column-reverse 스크롤 영역이라 새 메시지가 맨 아래에 끼워진다. 이미 읽던 메시지는
+  // 그대로 한 칸 올리고(계속 움직이면 읽기 어렵다), 새 메시지만 목록 아래 경계 밑에서 짧게 밀어 올린다.
+  function animateChatItems(nodes, wrapper) {
+    if (!features.chatSmooth || !wrapper || document.hidden || globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    // 위로 스크롤해 지난 채팅을 읽는 중이면 건드리지 않는다(column-reverse의 맨 아래는 scrollTop 0).
+    if (Math.abs(wrapper.scrollTop) > 2) return;
+    const items = nodes.filter((node) => node.nodeType === 1 && node.parentElement === wrapper && !chatAnimated.has(node)
+      && typeof node.animate === "function" && !node.matches("[class*='_list_bottom_']"));
+    // 처음 불러오기·대량 갱신은 그대로 표시한다.
+    if (!items.length || items.length > 12) return;
+    // 같은 순간에 들어온 메시지는 한 덩어리로 같은 거리만큼 올라오게 한다. 아래 경계 밖은 목록이 잘라 준다.
+    // 글자가 흐려지지 않게 페이드는 쓰지 않는다.
+    const distance = items.reduce((sum, item) => sum + item.offsetHeight, 0);
+    if (!distance) return;
+    for (const item of items) {
+      chatAnimated.add(item);
+      const animation = item.animate([{ transform: `translateY(${distance}px)` }, { transform: "translateY(0)" }], { duration: 140, easing: "ease-out" });
+      // 탭이 백그라운드로 가 애니메이션이 멈춰도 메시지가 아래에 숨은 채 남지 않게 한다.
+      setTimeout(() => { if (animation.playState !== "finished") animation.finish(); }, 240);
+    }
+  }
+
+  function ensureChatSmoothing() {
+    const wrapper = features.chatSmooth ? document.querySelector("[role='log'] [class*='_list_bottom_']")?.parentElement || null : null;
+    if (wrapper === chatWrapper) return;
+    chatObserver?.disconnect();
+    chatWrapper = wrapper;
+    if (!wrapper) return;
+    // MutationObserver는 그리기 전에 실행되므로 새 메시지가 한 프레임도 튀지 않는다.
+    chatObserver ||= new MutationObserver((mutations) => {
+      animateChatItems(mutations.flatMap((mutation) => [...mutation.addedNodes]), chatWrapper);
+    });
+    chatObserver.observe(wrapper, { childList: true });
   }
 
   function findFollowingRefreshButton() {
@@ -1511,6 +1612,7 @@
     removeAdPopup();
     rememberAndRestoreBlindMessages();
     applyChatFeatures();
+    ensureChatSmoothing();
     if (features.trends) {
       if (!document.getElementById("hanbi-trends")) updateTrends();
       else scheduleTrendLayout();
@@ -1594,6 +1696,7 @@
   });
 
   document.addEventListener("keydown", handleArrowSeek, true);
+  document.addEventListener("fullscreenchange", moveOverlays);
   for (const event of ["enterpictureinpicture", "leavepictureinpicture"]) document.addEventListener(event, () => { syncPipButton(); schedule(); }, true);
   for (const event of ['loadedmetadata', 'resize', 'emptied']) document.addEventListener(event, () => schedule(), true);
   document.addEventListener("pointerdown", resumeCompressor, true);

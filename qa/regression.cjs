@@ -625,13 +625,16 @@ async function uiMain() {
   });
   await check('QUALITY-MISMATCH: actual decoded height is shown without rewriting the site selection', () => {
     let height = 1080, labels = [];
-    const button = { textContent: 'Q --', title: '' };
+    const classes = new Set();
+    const button = { textContent: 'Q --', title: '', classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) } };
+    const location = { pathname: '/live/a' }, playbackLimit = { path: '/live/b', height: 480 };
     const source = { videoWidth: 1920, closest: () => null };
     const selected = { querySelector(selector) {
       return selector === '.hanbi-quality-actual' ? labels[0] || null : { textContent: '480p' };
     }, appendChild(label) { label.parentElement = this; labels.push(label); } };
     const sync = func('tools.js', 'syncQualityDisplay', {
       Number, video: () => source, actualQualityHeight: () => height, selectedQualityRow: () => selected,
+      Boolean, location, playbackLimit, refreshPlaybackLimit() {}, isRestrictedPlayback: value => value > 0 && value < 720,
       document: {
         getElementById: () => button, querySelectorAll: () => labels.slice(),
         createElement: () => ({ remove() { labels = labels.filter(item => item !== this); } }),
@@ -644,6 +647,9 @@ async function uiMain() {
     height = 480; sync();
     assert.equal(button.textContent, 'Q 480p');
     assert.equal(labels.length, 0);
+    assert.equal(classes.has('is-limited'), false);
+    playbackLimit.path = '/live/a'; sync();
+    assert.equal(button.textContent, 'Q 480p 제한'); assert.equal(classes.has('is-limited'), true); assert.match(button.title, /최고 480p/);
   });
   for (const asynchronous of [false, true]) {
     await check(`BUTTON-${asynchronous ? 'ASYNC' : 'SYNC'}: handler failure must reach the visible error status`, async () => {
@@ -698,6 +704,7 @@ async function uiMain() {
     const image = {}, save = {}, close = {}, handle = { addEventListener() {} };
     const ctx = vm.createContext({
       previewUrl: null, fileName: () => 'frame.png', download() {},
+      overlayHost: () => ({ appendChild(value) { overlay = value; } }),
       URL: { createObjectURL: () => `blob:${++urlId}`, revokeObjectURL: value => revoked.push(value) },
       document: { getElementById: () => overlay, body: { appendChild(value) { overlay = value; } },
         createElement: () => { created++; return { dataset: {}, remove() { overlay = null; }, querySelector: selector => selector === 'img' ? image : selector === '[data-save]' ? save : selector === '[data-close]' ? close : handle }; },
@@ -829,6 +836,32 @@ async function uiMain() {
     const result = selectTrendStreams([{ channelId: 'a', concurrentUserCount: 200 }], new Map(), 1000, 10);
     assert.equal(result.items.length, 1);
     assert.equal(result.items[0].pumping, false);
+  });
+  await check('RAW-STALL: buffering or a larger video must not stop RAW; leaving the channel does', () => {
+    const source = { isConnected: true };
+    const stops = [];
+    const ctx = vm.createContext({
+      recording: null, rawRecording: { source, channelPath: '/live/a' }, location: { pathname: '/live/a' },
+      video: () => null, rawCommand: command => stops.push(command), console: quiet, document: { getElementById: () => null },
+      preparedVideos: new WeakSet(), features: { autoUnmute: false }, isLive: () => true, applyCompressorState() {},
+    });
+    vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'prepareVideo'), ctx);
+    ctx.prepareVideo();
+    ctx.video = () => ({ isConnected: true, addEventListener() {} }); ctx.prepareVideo();
+    assert.deepEqual(stops, []); assert.equal(ctx.rawRecording.source, source);
+    ctx.location.pathname = '/live/b'; ctx.prepareVideo();
+    assert.deepEqual(stops, ['stop']); assert.equal(ctx.rawRecording, null);
+  });
+  await check('FULLSCREEN-OVERLAY: status/REC/TM overlays follow the fullscreen element', () => {
+    const body = { children: [], appendChild(node) { node.parentElement = this; } };
+    const player = { appendChild(node) { node.parentElement = this; } };
+    const nodes = { 'hanbi-tool-status': { parentElement: body }, 'hanbi-recording-indicator': { parentElement: body } };
+    const ctx = vm.createContext({ document: { fullscreenElement: null, body, getElementById: id => nodes[id] || null } });
+    vm.runInContext(`${extract('tools.js', n => n.type === 'VariableDeclarator' && n.id?.name === 'overlayHost').replace(/^/, 'var ')};${extract('tools.js', n => n.type === 'VariableDeclarator' && n.id?.name === 'overlayIds').replace(/^/, 'var ')};${extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === 'moveOverlays')}`, ctx);
+    ctx.document.fullscreenElement = player; ctx.moveOverlays();
+    assert.equal(nodes['hanbi-tool-status'].parentElement, player); assert.equal(nodes['hanbi-recording-indicator'].parentElement, player);
+    ctx.document.fullscreenElement = null; ctx.moveOverlays();
+    assert.equal(nodes['hanbi-tool-status'].parentElement, body);
   });
   console.log(`\nUI flow expectations: ${passed} passed, ${failed} failed. Hand-built DOM/API fixtures, not browser rendering/E2E.`);
   process.exitCode = failed ? 1 : 0;

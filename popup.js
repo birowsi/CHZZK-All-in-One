@@ -15,6 +15,7 @@ const featureDefaults = {
   chatFontSizeEnabled: false,
   sidebarRefresh: true,
   hoverPreview: true,
+  chatSmooth: true,
 };
 const trendDefaults = { minViewers: 1000, displayCount: 10, refreshMinutes: 1, sharpnessAmount: 100, brightnessAmount: 100, contrastAmount: 100, chatFontSize: 14 };
 const powerSettings = {

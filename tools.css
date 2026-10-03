@@ -2,8 +2,12 @@
 .hanbi-tool-button { min-width: 42px; padding: 0 6px; color: #fff; font-size: 11px; font-weight: 700; }
 .hanbi-tool-button.is-recording { color: #00ffa3; }
 #hanbi-quality-button { min-width: 58px; color: #00ffa3; }
+#hanbi-quality-button.is-limited { color: #ffb020; }
 .hanbi-quality-actual { display: inline-block; margin-left: 8px; padding: 1px 4px; border: 1px solid #00ffa3; border-radius: 2px; color: #00ffa3; font-size: 11px; white-space: nowrap; }
-#hanbi-audio-compressor { display: inline-flex; align-items: center; }
+#hanbi-audio-compressor { display: inline-flex; align-items: center; opacity: 0; transition: opacity .2s; }
+/* Mirror pzp's per-control auto-hide (.pzp-pc__volume-control) without reusing its class. */
+.pzp-pc.pzp-pc--controls #hanbi-audio-compressor { opacity: 1; }
+.pzp-pc--ended #hanbi-audio-compressor { display: none; }
 #hanbi-audio-compressor input[type="range"] { width: 72px; margin: 0 5px; accent-color: #00ffa3; cursor: pointer; }
 #hanbi-audio-compressor input[hidden] { display: none !important; }
 #hanbi-recording-indicator { position: fixed; top: 16px; right: 16px; z-index: 2147483647; padding: 7px 10px; border: 1px solid #00ffa3; border-radius: 4px; color: #00ffa3; background: #0b0b0bf2; font: 700 13px/1.2 system-ui, sans-serif; pointer-events: none; }

@@ -1,10 +1,10 @@
-# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-02)
+# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-03)
 
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 **1.1.23**. `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
-- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.23.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.23/`와 ZIP. dist는 Git에 올리지 않는다.
+- 공통 소스·빌드 **1.1.27**(2026-10-03, 미커밋 상태에서 빌드. 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.27.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.27/`와 ZIP. dist는 Git에 올리지 않는다.
 - 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
 
 ## 지금 상태 한눈에 보기 (2026-10-02 기준)
@@ -27,6 +27,37 @@
 - 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
 - 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
 - `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
+
+## 2026-10-03 제한 중계 표시·채팅 부드럽게 올리기 — 1.1.25
+
+### 제한 중계 분석과 범위
+- 사용자 제보: 아시안게임 같이보기 방송(`/live/45e71a76e949e16a34764deb962f9d9f`)이 1080p로 몇 초 보이다 오류 후 저화질 고정. live-detail 확인 결과 `liveCategory=asiangames2026`, `watchPartyNo` 있음, `krOnlyViewing=true`, 인코딩 트랙은 480p·360p·오디오 전용뿐이고 트랙 ID가 `480p` 같은 이름이 아닌 무작위 문자열이다. 확장의 1080p 우회(`480p`→`1080p` 경로 치환)는 이 방송에 적용되지 않는다. 몇 초간의 1080p 원인은 확인하지 못했다.
+- 중계권 제한을 우회하는 작업(목록에 없는 고화질 경로 추측 요청, 관련 우회 도구 탐색)은 하지 않기로 했다. 이 세션에서 해당 CDN 탐색 요청은 자동 안전 검사로 거부되었고, 사용자 재요청에도 진행하지 않았다. 대신 표시 기능만 추가했다.
+
+### 수정
+1. `tools.js` 제한 중계 표시: `maxPlaybackHeight`(live-detail 재생 정보의 최고 videoHeight, 오디오 전용 제외)와 `isRestrictedPlayback`(0 초과 720 미만). `refreshPlaybackLimit`이 방송마다·1분마다 live-detail을 다시 조회한다. 제한이면 Q 버튼이 `Q 480p 제한`(주황색 `is-limited`), title·클릭 안내에 "서버가 최고 480p까지만 제공"을 표시한다. 화질 요청은 바꾸지 않는다.
+2. `tools.js` 채팅 부드럽게 올리기(새 설정 `chatSmooth`, 기본 ON, 팝업 "새 채팅 부드럽게 올리기"): 사이트 채팅 목록은 `[role=log]` 안 `_wrapper_…`(column-reverse, overflow-y auto, 첫 자식 `_list_bottom_…`)이다(2026-10-03 사이트 JS/CSS 확인). 그 목록에만 MutationObserver를 붙여 새 메시지 높이를 0→실제 높이로 180ms(4개 이상 동시면 120ms) 애니메이션한다. 맨 아래(scrollTop≈0)일 때만, 13개 이상 동시 추가·탭 숨김·reduced-motion이면 하지 않는다. flex 컨테이너에서 찌그러지지 않게 애니메이션 중에만 overflow hidden·flex-shrink 0을 주고 종료/타임아웃 때 원래대로 되돌린다(타임아웃은 멈춘 애니메이션도 finish).
+
+### 검증
+- 자동: 단위 83/83(제한 중계 판정, 실제 응답 구조), 회귀 23/23, 오디오 19/19, UI 21/21(Q 버튼 `제한` 표시 포함).
+- 실제 치지직 index.css + tools.js 정적 채팅 페이지(내장 Chromium): column-reverse 확인, 새 메시지 높이 0→19→25→28px, 다른 메시지 높이 유지, 종료 후 inline 스타일 복원·애니메이션 제거, 위로 스크롤 중·20개 일괄 추가는 애니메이션 안 함. 내장 브라우저 창이 숨김 상태라 애니메이션 시점은 currentTime을 직접 지정해 측정했다. 실방송 채팅 체감은 미확인.
+- 빌드: Firefox 41/Chrome 43 항목, manifest 1.1.25, 패키지 tools.js/tools.css/index.html/popup.js가 소스와 일치.
+
+## 2026-10-03 COMP 자동 숨김·RAW 버퍼링 중단·전체화면 안내 — 1.1.24
+
+### 요청
+- 사용자 제보: 플레이어 UI가 숨겨져도 컴프레서 컨트롤이 계속 보임. 이후 "더 찾아 볼래?" 요청으로 코드 검토해 두 건을 추가로 수정. 이번 세션은 Windows 로컬(build.ps1 사용 가능)이다.
+
+### 수정
+1. `tools.css` COMP 자동 숨김(1.1.22 회귀): 사이트는 바 전체가 아니라 `.pzp-pc__volume-control`, `.pzp-pc__setting-button` 등 클래스별로 `opacity:0`을 주고 `.pzp-pc--controls`일 때만 `opacity:1`로 보인다(2026-10-03 실제 player-vendor CSS 확인). 1.1.22에서 COMP root의 `pzp-pc__volume-control` 클래스를 제거해 숨김 대상에서 빠졌다. 클래스를 되돌리지 않고 `#hanbi-audio-compressor`에 같은 규칙(opacity 0/1, 0.2s, `--ended`에서 숨김)을 추가했다.
+2. `tools.js` RAW 중단 조건: `prepareVideo`가 `rawRecording.source !== video()`이면 RAW를 끝냈다. 버퍼링(readyState<2 → video()=null)이나 더 큰 광고/미리보기 video만으로 RAW가 멈췄다(1.1.23에서 REC만 고쳐진 같은 결함). 이제 녹화 video가 문서에서 제거되거나 경로가 바뀔 때만 끝낸다. 플레이어 교체·방송 이동은 기존 timeshift.js 페이지 측 검사가 처리한다.
+3. `tools.js` 전체화면 오버레이: 안내 토스트·REC 표시·팔로잉 알림이 body에 붙어 전체화면에서 보이지 않았다. `overlayHost()`(fullscreenElement 또는 body)에 붙이고, `fullscreenchange` 때 토스트·REC 표시·스크린샷 미리보기·TM 창·팔로잉 알림을 새 위치로 옮긴다. 부수 효과: 전체화면에서도 팔로잉 알림이 뜬다(15초 후 사라짐).
+
+### 검증
+- 자동: 단위 82/82, 기본 회귀 23/23, 오디오 19/19, UI 21/21(새 RAW-STALL, FULLSCREEN-OVERLAY). RAW-STALL은 1.1.23 tools.js에서 실패함을 확인.
+- 실제 치지직 player-vendor CSS + tools.css 정적 페이지(Chromium 내장 브라우저)에서 COMP opacity: controls 1, 숨김 0, ended display:none. 실방송 확인 아님.
+- 빌드: `.uild.ps1`, `.uild.ps1 -Browser Chrome`. Firefox 41/Chrome 43 항목, manifest 1.1.24, 패키지 tools.js/tools.css가 소스와 일치.
+- 미확인: 실방송에서 COMP 숨김, RAW 버퍼링 중 유지, 전체화면 안내 표시. 사용자가 QA 예정.
 
 ## 2026-10-02 Chrome PIP 복구·PIP 중 녹화 유지·통나무 로그 검증 — 1.1.23
 

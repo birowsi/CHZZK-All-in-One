@@ -194,3 +194,20 @@ test("PiP·버퍼링·광고로 큰 영상이 바뀌어도 같은 video 녹화�
   assert.equal(shouldStopRecording(session, "/live/a", source), true);
   assert.equal(shouldStopRecording(null, "/live/a", null), true);
 });
+
+test("live-detail에서 서버가 제공하는 최고 화질을 읽고 720p 미만을 제한 중계로 본다", () => {
+  const { maxPlaybackHeight, isRestrictedPlayback } = require("../tools.js");
+  // 2026-10-03 아시안게임 같이보기 방송 응답 구조(경로·토큰 제외): 480p·360p·오디오 전용 트랙만 제공.
+  const restricted = { livePlaybackJson: JSON.stringify({ media: [
+    { mediaId: "HLS", encodingTrack: [{ encodingTrackId: "kdsjfw9er21l3kjsd0fsdf", videoHeight: 480 }, { encodingTrackId: "xcvjkql100f0ghsdf", videoHeight: 360 }, { encodingTrackId: "asdkljxcvpow02k3rkdf" }] },
+    { mediaId: "LLHLS", encodingTrack: [{ videoHeight: 480 }, { videoHeight: 360 }] },
+  ] }) };
+  assert.equal(maxPlaybackHeight(restricted), 480);
+  assert.equal(isRestrictedPlayback(480), true);
+  const normal = { livePlaybackJson: { media: [{ encodingTrack: [{ videoHeight: 1080 }, { videoHeight: 720 }] }] } };
+  assert.equal(maxPlaybackHeight(normal), 1080);
+  assert.equal(isRestrictedPlayback(1080), false);
+  assert.equal(maxPlaybackHeight({ livePlaybackJson: "{broken" }), 0);
+  assert.equal(maxPlaybackHeight(null), 0);
+  assert.equal(isRestrictedPlayback(0), false);
+});
