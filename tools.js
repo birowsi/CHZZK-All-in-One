@@ -241,6 +241,22 @@
   let compressorContext = null;
   const compressorGraphs = new WeakMap();
   const compressorControls = new WeakSet();
+  // Firefox는 확장을 업데이트하면 열린 탭에 새 콘텐츠 스크립트를 넣지만, 이전 스크립트가 만든 오디오
+  // 연결(MediaElementSource)은 새로고침 전까지 페이지에 남아 계속 소리를 낸다. 같은 영상에 새 연결을
+  // 또 만들면 두 경로가 겹쳐 약 +6dB 커진다(Firefox 157 실측). 연결한 스크립트를 영상에 표시해 두고
+  // 다른 스크립트가 연결한 영상에는 손대지 않는다.
+  const audioGraphOwner = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  const hasForeignAudioGraph = (v) => {
+    const owner = v?.dataset?.hanbiAudioGraph;
+    return Boolean(owner) && owner !== audioGraphOwner;
+  };
+  // 1.1.31 이하는 표시를 남기지 않는다. 그 버전에서 업데이트된 직후라면 페이지에 이전 COMP 버튼이 남아 있고,
+  // 그 버튼이 OFF가 아니면 이전 스크립트의 오디오 연결이 살아 있으므로 지금 있는 영상을 이전 버전 소유로 표시한다.
+  if (!/COMP OFF/.test(document.getElementById("hanbi-audio-compressor")?.textContent ?? "COMP OFF")) {
+    for (const media of document.querySelectorAll("video")) {
+      if (!media.dataset.hanbiAudioGraph) media.dataset.hanbiAudioGraph = "previous-version";
+    }
+  }
   let compressorEnabled = localStorage.getItem("hanbi_comp_enabled") === "true";
   const savedGain = Number(localStorage.getItem("knifeGain") ?? 1);
   let compressorGain = Number.isFinite(savedGain) ? Math.max(0, Math.min(2, savedGain)) : 1;
@@ -476,7 +492,7 @@
       input.connect(volume);
       // mozCaptureStream은 영상의 직접 재생만 끊고, COMP용 MediaElementSource 경로는 계속 소리를 낸다
       // (Firefox 157 실측). 그 경로가 있으면 청취 경로까지 틀면 같은 소리가 두 번 나와 약 +6dB 커진다.
-      const syncVolume = () => { volume.gain.value = source.muted || compressorGraphs.has(source) ? 0 : source.volume; };
+      const syncVolume = () => { volume.gain.value = source.muted || compressorGraphs.has(source) || hasForeignAudioGraph(source) ? 0 : source.volume; };
       syncVolume();
       source.addEventListener("volumechange", syncVolume);
       monitorGraph = { source: volume, compressor, gain, context, mode: "", syncVolume };
@@ -676,6 +692,7 @@
       compressorData = compressorGraphs.get(v);
       return compressorData;
     }
+    if (hasForeignAudioGraph(v)) return null;
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) return null;
     let ctx;
@@ -693,6 +710,7 @@
         mode: "",
       };
       compressorGraphs.set(v, compressorData);
+      if (v.dataset) v.dataset.hanbiAudioGraph = audioGraphOwner;
       for (const [name, value] of Object.entries(compressorDefaults)) compressorData.compressor[name].value = value;
       return compressorData;
     } catch (error) {
@@ -784,8 +802,10 @@
     const buttonElement = root.querySelector("[data-compressor-toggle]");
     const slider = root.querySelector("input[type='range']");
     const active = compressorEnabled && compressorData?.mode === 'compressed' && compressorData.ctx.state === 'running';
-    const label = !compressorEnabled ? 'COMP OFF' : active ? 'COMP ON' : 'COMP 대기/원음';
+    const stale = hasForeignAudioGraph(video());
+    const label = stale ? 'COMP 새로고침 필요' : !compressorEnabled ? 'COMP OFF' : active ? 'COMP ON' : 'COMP 대기/원음';
     if (buttonElement.textContent !== label) buttonElement.textContent = label;
+    buttonElement.title = stale ? '확장이 업데이트되었습니다. 탭을 새로고침하면 COMP를 다시 쓸 수 있습니다.' : '오디오 컴프레서';
     buttonElement.classList.toggle("is-recording", active);
     buttonElement.setAttribute("aria-pressed", String(active));
     if (Number(slider.value) !== compressorGain) slider.value = compressorGain;

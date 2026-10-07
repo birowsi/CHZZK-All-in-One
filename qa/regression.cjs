@@ -388,8 +388,9 @@ function audioProbe(fault = '') {
     MediaStream: class { constructor(tracks) { this.tracks = tracks; } },
     navigator: { userAgent: 'Firefox/154.0' },
     compressorData: null, compressorContext: null, compressorGraphs: new WeakMap(), monitorGraph: null,
-    compressorEnabled: false, compressorGain: 1, ...helpers,
+    compressorEnabled: false, compressorGain: 1, ...helpers, audioGraphOwner: 'owner-new', video: () => null,
   });
+  vm.runInContext(`var ${extract('tools.js', n => n.type === 'VariableDeclarator' && n.id?.name === 'hasForeignAudioGraph')};`, ctx);
   for (const name of ['closeCompressor', 'getCompressor', 'applyCompressorState', 'syncMonitorCompressor', 'resumeCompressor', 'syncCompressorControl', 'monitorFirefoxAudio']) {
     vm.runInContext(extract('tools.js', n => n.type === 'FunctionDeclaration' && n.id?.name === name), ctx);
   }
@@ -409,7 +410,7 @@ function compressorControlProbe() {
   }
   const volume = { insertAdjacentElement(position, el) { root = el; el.previousElementSibling = volume; } };
   const ctx = vm.createContext({
-    compressorControls: new WeakSet(), compressorEnabled: true, compressorGain: 0.37,
+    compressorControls: new WeakSet(), compressorEnabled: true, compressorGain: 0.37, hasForeignAudioGraph: () => false,
     compressorData: { mode: 'compressed', ctx: { state: 'running' } },
     localStorage: { setItem(key, value) { writes.set(key, String(value)); } },
     video() { return {}; }, applyCompressorState() {},
@@ -548,6 +549,21 @@ async function audioMain() {
     const stop = q.ctx.monitorFirefoxAudio(other, { getAudioTracks: () => [{}] });
     assert.equal(q.ctx.monitorGraph.source.gain.value, 0.8);
     q.ctx.compressorEnabled = true; q.ctx.applyCompressorState(other);
+    assert.equal(q.ctx.monitorGraph.source.gain.value, 0);
+    stop();
+  });
+  await check('AUDIO-UPDATE-NO-DOUBLE: after a Firefox extension update, leave the previous instance graph alone (no second source, silent monitor)', () => {
+    const p = audioProbe();
+    const fresh = { dataset: {} };
+    p.ctx.compressorEnabled = true; p.ctx.applyCompressorState(fresh);
+    assert.equal(fresh.dataset.hanbiAudioGraph, 'owner-new');
+    assert.equal(p.contexts[0].sources, 1);
+    const q = audioProbe();
+    const wiredByOldVersion = { dataset: { hanbiAudioGraph: 'owner-old' }, muted: false, volume: 1, addEventListener() {}, removeEventListener() {} };
+    q.ctx.compressorEnabled = true; q.ctx.applyCompressorState(wiredByOldVersion);
+    assert.equal(q.contexts.reduce((sum, context) => sum + context.sources, 0), 0);
+    assert.equal(q.ctx.compressorData, null);
+    const stop = q.ctx.monitorFirefoxAudio(wiredByOldVersion, { getAudioTracks: () => [{}] });
     assert.equal(q.ctx.monitorGraph.source.gain.value, 0);
     stop();
   });
