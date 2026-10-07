@@ -306,3 +306,19 @@ test("GRID 설정이 도착하기 전 첫 live-detail도 기억된 설정(기본
     assert.deepEqual(xhr.response.content.p2pQuality, cleared ? [] : ["1080p"]);
   }
 });
+
+test("같이보기 원본 API와 재생 정보가 든 다른 치지직 API도 P2P 정보를 지운다", async () => {
+  const { isLiveApi, carriesPlayback, transformText } = require("../page.js");
+  const channel = "45e71a76e949e16a34764deb962f9d9f";
+  assert.equal(isLiveApi(`https://api.chzzk.naver.com/manage/v1/channels/${channel}/watch-party/source/516`), true);
+  assert.equal(isLiveApi(`https://api.chzzk.naver.com/manage/v1/channels/${channel}/watch-party/source/516/status`), true);
+  assert.equal(isLiveApi(`https://api.chzzk.naver.com/service/v3.3/channels/${channel}/live-detail`), true);
+  assert.equal(isLiveApi(`https://api.chzzk.naver.com/manage/v1/channels/${channel}/settings`), false);
+  const playback = JSON.stringify({ media: [{ mediaId: "HLS", encodingTrack: [{ encodingTrackId: "480p", p2pPath: "p2p://x", videoHeight: 480 }] }] });
+  const body = JSON.stringify({ code: 200, content: { livePlaybackJson: playback } });
+  assert.equal(carriesPlayback("https://api.chzzk.naver.com/service/v1/some-new-api", body), true);
+  assert.equal(carriesPlayback("https://example.com/x", body), false);
+  const patched = JSON.parse(JSON.parse(transformText(body, false, true, true)).content.livePlaybackJson);
+  assert.equal(patched.media[0].encodingTrack[0].p2pPath, undefined);
+  assert.equal(patched.meta.p2p, false);
+});

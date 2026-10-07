@@ -13,7 +13,14 @@
           || (url.hostname === "glad-vod.pstatic.net" && /^\/a\/read\/v2\/VOD_ALPHA\//i.test(url.pathname)));
     } catch (_) { return false; }
   }
-  const isLiveApi = (url) => /^https:\/\/api\.chzzk\.naver\.com\/(?:service|polling)\/v[\d.]+\/channels\/[a-f0-9]{32}\/live-(?:detail|status|playback-json)(?:-meta)?(?:[?#]|$)/i.test(url);
+  // 같이보기 원본(manage/v1/channels/{id}/watch-party/source/{sourceId})도 원본 방송의 재생 정보를 준다.
+  const isLiveApi = (url) => /^https:\/\/api\.chzzk\.naver\.com\/(?:service|polling|manage)\/v[\d.]+\/channels\/[a-f0-9]{32}\/(?:live-(?:detail|status|playback-json)(?:-meta)?|watch-party\/source\/[^/?#]+(?:\/status)?)(?:[?#]|$)/i.test(url);
+  // 목록에 없는 API가 재생 정보를 실어 와도 P2P 정보를 지운다. 남으면 사이트가 P2P 상태 확인에
+  // 실패할 때 "라이브 재생 중 문제가 발생했습니다"를 띄운다.
+  const carriesPlayback = (url, text) => {
+    try { return new URL(url).hostname === "api.chzzk.naver.com" && typeof text === "string" && text.includes("PlaybackJson"); }
+    catch (_) { return false; }
+  };
   const isPlaylist = (url) => {
     try {
       const parsed = new URL(url);
@@ -155,7 +162,7 @@
       if (!live && !playlist && !isAdFeed(url) && !looksJson) return response;
       try {
         const text = await response.clone().text();
-        const patched = transformText(text, playlist, gridEnabled, live);
+        const patched = transformText(text, playlist, gridEnabled, live || carriesPlayback(url, text));
         if (patched === text) return response;
         const headers = new target.Headers(response.headers);
         headers.delete("content-length");
@@ -206,7 +213,7 @@
           const cached = meta?.cache;
           if (cached && cached.value === value && cached.grid === gridEnabled && cached.url === url) return cached.result;
           let result = value;
-          if (typeof value === "string") result = transformText(value, playlist, gridEnabled, live);
+          if (typeof value === "string") result = transformText(value, playlist, gridEnabled, live || carriesPlayback(url, value));
           else if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
             try {
               const patched = neutralizeAdBuffer(ArrayBuffer.isView(value)
@@ -268,5 +275,5 @@
     }
   }
   if (typeof window !== "undefined") install(window);
-  if (typeof module !== "undefined") module.exports = { chooseVariant, filterMasterPlaylist, patchPayload, isAdMediaSource, install, neutralizeAds, neutralizeAdBuffer, transformText, isAdFeed };
+  if (typeof module !== "undefined") module.exports = { isLiveApi, carriesPlayback, chooseVariant, filterMasterPlaylist, patchPayload, isAdMediaSource, install, neutralizeAds, neutralizeAdBuffer, transformText, isAdFeed };
 })();

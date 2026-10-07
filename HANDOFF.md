@@ -3,8 +3,8 @@
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 **1.1.30**(2026-10-08): 커밋 `f62f928`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.30/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096320/7f27e59867454bfd8439-1.1.30.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.30(latest). 1.1.29(2026-10-04): 커밋 `51cd3e2`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.29/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5082340/7f27e59867454bfd8439-1.1.29.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.29(latest). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
-- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.30.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.30/`와 ZIP. dist는 Git에 올리지 않는다.
+- 공통 소스·빌드 **1.1.31**(2026-10-08, 미커밋 빌드). 1.1.30(2026-10-08): 커밋 `f62f928`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.30/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096320/7f27e59867454bfd8439-1.1.30.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.30(latest). 1.1.29(2026-10-04): 커밋 `51cd3e2`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.29/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5082340/7f27e59867454bfd8439-1.1.29.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.29(latest). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.31.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.31/`와 ZIP. dist는 Git에 올리지 않는다.
 - 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
 
 ## 지금 상태 한눈에 보기 (2026-10-02 기준)
@@ -27,6 +27,14 @@
 - 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
 - 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
 - `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
+
+## 2026-10-08 같이보기 방송의 "라이브 재생 중 문제" 오류 — 1.1.31
+
+- 사용자 제보: 1.1.30 배포 직후에도 같은 오류 화면(해결 방법 확인 → help.naver.com 30044/23231 일반 재생 문제 도움말).
+- 사이트 코드 추적: P2P 확인 훅(`cJ`)은 일반 방송 외에 같이보기 원본 플레이어에서도 `EF` 상태의 `livePlaybackJson`으로 호출된다. 그 값은 `ko`(axios, `https://api.chzzk.naver.com/manage/v1`)의 `/channels/{id}/watch-party/source/{sourceId}`(및 `/status`)에서 온다. 확장의 `isLiveApi`는 `service|polling` 경로의 `live-*`만 처리해 같이보기 원본의 P2P 정보가 남았다. 사용자가 보던 아시안게임 같이보기와 일치.
+- 수정(`page.js`): `isLiveApi`에 `manage` 경로와 `watch-party/source/{id}(/status)` 추가. 추가로 `api.chzzk.naver.com` 응답 문자열에 `PlaybackJson`이 있으면(`carriesPlayback`) 같은 P2P 제거를 적용해, 사이트가 다른 API로 재생 정보를 옮겨도 대응한다. 객체형 XHR 응답(responseType=json)은 기존처럼 URL로만 판정한다(axios는 문자열 경로).
+- 자동: 단위 87/87(같이보기 원본 URL 판정·재생 정보 포함 응답 P2P 제거), 회귀 23, 오디오 20, UI 21. 빌드 1.1.31 Firefox 41/Chrome 43.
+- 미확인: 실제 같이보기 원본 API 응답에 P2P 트랙이 들어 있는지(로그인·sourceId 필요해 직접 조회하지 못함), 실방송 오류 재발 여부.
 
 ## 2026-10-08 녹화 타임스탬프 정리·RAW 결과 창·"라이브 재생 중 문제" 오류 — 1.1.30
 
