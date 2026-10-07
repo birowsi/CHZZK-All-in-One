@@ -2,7 +2,10 @@
   const api = globalThis.browser ?? globalThis.chrome;
   let features = null;
   function publish() {
-    if (features) document.dispatchEvent(new CustomEvent('hanbi-playback-settings', { detail: JSON.stringify({ gridBypass: features.gridBypass !== false }) }));
+    if (!features) return;
+    // page.js가 다음 페이지 로드 때 설정 도착 전부터 같은 값을 쓰도록 페이지 저장소에 기억한다.
+    try { localStorage.setItem('hanbi_grid_bypass', String(features.gridBypass !== false)); } catch (_) {}
+    document.dispatchEvent(new CustomEvent('hanbi-playback-settings', { detail: JSON.stringify({ gridBypass: features.gridBypass !== false }) }));
   }
   api.storage.local.get('features').then(data => { features = data.features || {}; publish(); });
   api.storage.onChanged.addListener((changes, area) => {

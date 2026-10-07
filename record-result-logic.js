@@ -10,8 +10,15 @@
     "-movflags", "+faststart",
   ];
 
+  // 재인코딩 없이 MP4로 다시 담고 타임스탬프를 0부터 매긴다. 라이브 조각(RAW)과 MediaRecorder MP4는
+  // 방송 시작 기준의 큰 시작 시각·음수 시각을 가질 수 있어 디스코드 등에서 길이·재생 오류가 난다.
+  // (사용자 검증 명령: ffmpeg -i in.mp4 -map 0 -c copy -avoid_negative_ts make_zero out.mp4)
+  const remuxMp4 = ["-map", "0:v?", "-map", "0:a?", "-c", "copy", "-avoid_negative_ts", "make_zero", "-movflags", "+faststart"];
+
   function conversionSpec(kind, options = {}) {
     switch (kind) {
+      case "remux":
+        return { output: "output-fixed.mp4", ext: "mp4", mime: "video/mp4", args: remuxMp4 };
       case "mp4":
         return { output: "output.mp4", ext: "mp4", mime: "video/mp4", args: compatibleMp4 };
       case "gif":
@@ -61,7 +68,10 @@
       && (codecs.length === 1 || codecs[1] === "mp4a.40.2");
   }
 
-  const api = { conversionSpec, isCompatibleMp4 };
+  // H.264/AAC MP4나 MPEG-TS(RAW)는 복사만으로 MP4가 된다.
+  const canRemuxToMp4 = (mimeType) => isCompatibleMp4(mimeType) || /^video\/mp2t\b/i.test(mimeType || "");
+
+  const api = { conversionSpec, isCompatibleMp4, canRemuxToMp4 };
   if (typeof module !== "undefined") module.exports = api;
   else root.HanbiRecorderLogic = api;
 })(globalThis);

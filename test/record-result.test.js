@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { conversionSpec, isCompatibleMp4 } = require("../record-result-logic.js");
+const { conversionSpec, isCompatibleMp4, canRemuxToMp4 } = require("../record-result-logic.js");
 
 test("MP4 인코딩·자르기·분할은 WebM의 1000fps 프레임 복제를 막는다", () => {
   for (const spec of [conversionSpec("mp4"), conversionSpec("trim", { start: 0, end: 1 }), conversionSpec("split", { seconds: 1 })]) {
@@ -40,4 +40,13 @@ test("자르기는 MP4, WebM, GIF, WebP 출력을 선택한다", () => {
     assert.equal(spec.output, `output-trim.${format}`);
   }
   assert.throws(() => conversionSpec("trim", { start: 1, end: 2, format: "avi" }), /형식/);
+});
+
+test("MP4 저장은 H.264/AAC MP4와 RAW TS를 재인코딩 없이 복사하고 타임스탬프를 0부터 정리한다", () => {
+  const spec = conversionSpec("remux");
+  assert.equal(spec.output, "output-fixed.mp4");
+  assert.deepEqual(spec.args, ["-map", "0:v?", "-map", "0:a?", "-c", "copy", "-avoid_negative_ts", "make_zero", "-movflags", "+faststart"]);
+  assert.ok(!spec.args.includes("libx264"));
+  for (const mime of ['video/mp4; codecs="avc1.4D001F,mp4a.40.2"', "video/mp4;codecs=avc1.420028,mp4a.40.2", "video/mp2t"]) assert.equal(canRemuxToMp4(mime), true);
+  for (const mime of ["video/webm;codecs=vp8,opus", "video/mp4", undefined]) assert.equal(canRemuxToMp4(mime), false);
 });

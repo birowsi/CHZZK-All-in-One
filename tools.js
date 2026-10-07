@@ -189,6 +189,7 @@
   let trendOptions = { ...trendDefaults };
   let recording = null;
   let rawRecording = null;
+  let rawStartedAt = null; // 결과 창에 넘길 마지막 RAW 녹화 시작 시각
   let sharedCapture = null;
   let monitorGraph = null;
   let scheduled = false;
@@ -642,19 +643,20 @@
   function toggleRawRecording(buttonElement) {
     if (rawRecording) {
       let result;
+      rawStartedAt = rawRecording.startedAt;
       try { result = rawCommand("stop"); }
       finally {
         rawRecording = null;
         buttonElement.textContent = "RAW";
         buttonElement.classList.remove("is-recording");
       }
-      status(`방송 원본 조각의 ${result.ext.toUpperCase()} 다운로드를 시작했습니다.`);
+      status(`RAW ${result.ext.toUpperCase()} 녹화를 결과 창으로 보내는 중…`);
       return;
     }
     const source = video();
     if (!source) throw new Error("재생 중인 영상을 찾지 못했습니다.");
     rawCommand("start");
-    rawRecording = { source, channelPath: location.pathname };
+    rawRecording = { source, channelPath: location.pathname, startedAt: Date.now() };
     buttonElement.textContent = "STOP";
     buttonElement.classList.add("is-recording");
     status("RAW 녹화를 시작했습니다. 전송되는 방송 조각을 그대로 모읍니다.");
@@ -1723,7 +1725,36 @@
     hideTrendPreview();
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   });
+  // 페이지(MAIN world)의 RAW 녹화 파일을 받아 REC와 같은 결과 창에서 연다. 결과 창은 MP4 저장 때
+  // 타임스탬프를 0부터 다시 매겨(디스코드 등에서 길이·재생 오류 방지) 재인코딩 없이 정리한다.
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || event.origin !== location.origin) return;
+    // Firefox 콘텐츠 스크립트는 페이지 객체를 Xray로 보므로 원래 객체에서 값을 읽는다.
+    const data = event.data?.wrappedJSObject ?? event.data;
+    if (data?.type !== "hanbi-raw-file") return;
+    // 같은 이유로 페이지의 Blob은 instanceof Blob이 거짓이 된다(Firefox 157 실측). 다시 Xray로 감싸
+    // 확장 API(sendMessage·createObjectURL)가 받을 수 있는 Blob으로 만든다.
+    const blob = typeof XPCNativeWrapper === "function" && data.blob ? XPCNativeWrapper(data.blob) : data.blob;
+    if (!(blob instanceof Blob) || !blob.size) return;
+    const id = Number(data.id);
+    const ext = data.ext === "ts" ? "ts" : "mp4";
+    const name = String(data.name || fileName(ext).replace(/\.\w+$/, "")).replace(/[\/:*?"<>|]/g, "_");
+    document.dispatchEvent(new CustomEvent("hanbi-raw-file-received", { detail: String(id) }));
+    const startedAt = rawStartedAt ?? Date.now();
+    rawStartedAt = null;
+    status("RAW 녹화 결과 창을 여는 중…");
+    HanbiRecordingTransport.save(api, { blob, fileName: name, mimeType: blob.type || (ext === "ts" ? "video/mp2t" : "video/mp4"), startedAt, stoppedAt: Date.now() })
+      .then(() => status("RAW 녹화 결과 창을 열었습니다. MP4 버튼으로 타임스탬프를 정리해 저장할 수 있습니다."))
+      .catch((error) => {
+        console.error("[CHZZK All-in-One RAW]", error);
+        const url = URL.createObjectURL(blob);
+        download(url, `${name}.${ext}`);
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        status("결과 창을 열지 못해 RAW 원본을 바로 저장했습니다.", true);
+      });
+  });
   document.addEventListener("hanbi-raw-error", event => {
+    rawStartedAt = rawRecording?.startedAt ?? null;
     rawRecording = null;
     const button = document.getElementById("hanbi-raw-button");
     if (button) { button.textContent = "RAW"; button.classList.remove("is-recording"); }

@@ -1,10 +1,10 @@
-# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-04)
+# CHZZK All-in-One 인수인계 / 현황 (최신: 2026-10-08)
 
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 **1.1.29**(2026-10-04): 커밋 `51cd3e2`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.29/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5082340/7f27e59867454bfd8439-1.1.29.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.29(latest). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
-- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.29.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.29/`와 ZIP. dist는 Git에 올리지 않는다.
+- 공통 소스·빌드 **1.1.30**(2026-10-08, 미커밋 빌드). 1.1.29(2026-10-04): 커밋 `51cd3e2`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.29/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5082340/7f27e59867454bfd8439-1.1.29.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.29(latest). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.30.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.30/`와 ZIP. dist는 Git에 올리지 않는다.
 - 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
 
 ## 지금 상태 한눈에 보기 (2026-10-02 기준)
@@ -27,6 +27,24 @@
 - 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
 - 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
 - `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
+
+## 2026-10-08 녹화 타임스탬프 정리·RAW 결과 창·"라이브 재생 중 문제" 오류 — 1.1.30
+
+### 녹화 파일 타임스탬프(디스코드 업로드 오류)
+- 사용자 제보: 클립을 디스코드 등에 올리면 타임스탬프 오류. 사용자가 `ffmpeg -i in.mp4 -map 0 -c copy -avoid_negative_ts make_zero fixed.mp4`로 해결.
+- 재현(실방송 LLHLS 조각 3개로 만든 RAW형 fMP4, ffprobe): start_time 23820.3초, format duration 23826초(6.6시간)로 잡힘. 같은 명령(+`-movflags +faststart`) 후 start 0, duration 6.04초, moov가 mdat 앞.
+- 수정: `record-result-logic.js`에 `remux` 스펙(`-map 0:v? -map 0:a? -c copy -avoid_negative_ts make_zero -movflags +faststart`)과 `canRemuxToMp4`(H.264/AAC MP4 또는 `video/mp2t`). `record-result.js`의 MP4 버튼은 이제 이런 파일을 원본 그대로 받지 않고 FFmpeg로 복사 정리한다(재인코딩 없음). 정리 실패 시 원본 저장. TS 입력(`input.ts`)·원본 확장자·TS 미리보기 불가 안내 추가. 확장 내장 ffmpeg.wasm(0.12.10)으로 같은 샘플을 처리해 Duration 6.04·start 0·h264/aac 유지 확인(내장 Chromium).
+- RAW도 결과 창으로: `timeshift.js`는 RAW Blob을 `window.postMessage({type:"hanbi-raw-file"})`로 콘텐츠 스크립트에 넘기고, 2초 안에 `hanbi-raw-file-received` 응답이 없으면 예전처럼 직접 다운로드한다. MP4 RAW의 MIME에 hls 레벨의 videoCodec/audioCodec을 넣어 결과 창이 복사 정리 대상으로 인식한다. `tools.js`가 받아 `HanbiRecordingTransport.save`로 결과 창을 연다(실패 시 직접 다운로드).
+- Firefox 실측(157 headless, BiDi `webExtension.install`로 1.1.30 임시 설치, 실제 chzzk.naver.com): 콘텐츠 스크립트에서 페이지 메시지는 `event.data.wrappedJSObject`로 읽어야 하고, 페이지 Blob은 `instanceof Blob`이 false였다. `XPCNativeWrapper(blob)`로 다시 감싸 해결 → 응답(ack) 수신, 결과 창 탭 열림 확인. Chrome 경로는 실측하지 않았다(Chrome은 구조화 복제된 Blob을 받는다).
+
+### "라이브 재생 중 문제가 발생했습니다 / 해결 방법 확인" 오류
+- 사이트 코드(2026-10-08 index.js): 이 화면은 `rJ` 상태가 true일 때 뜨며, `rJ`는 재생 정보에 P2P 트랙(`p2pPath`)이 있을 때 호출하는 `LiveProvider.getP2PState()`가 실패(catch)하면 true가 된다. 즉 GRID/P2P 상태 확인 실패 화면이다(도움말 링크 chzzk6).
+- 확장은 GRID 우회 ON(기본)일 때 live-detail 응답에서 P2P 정보를 지워 이 확인 자체를 막는다. 그런데 `page.js`의 `gridEnabled` 초기값이 false였고 설정은 `playback-settings.js`가 storage에서 비동기로 읽어 보내므로, 첫 live-detail 응답이 먼저 오면 P2P 정보가 남았다(간헐적 → "가끔"과 일치).
+- 수정: `playback-settings.js`가 설정을 페이지 localStorage `hanbi_grid_bypass`에 기억하고, `page.js`는 시작부터 그 값(없으면 기본 ON)을 쓴다. 새 단위 테스트(저장값 없음/true → P2P 제거, false → 유지).
+- 미확인: 실방송에서 오류 빈도 감소. GRID 우회를 끈 사용자는 사이트 P2P 확인을 그대로 거치므로 같은 오류가 날 수 있다(사이트·GRID 쪽 문제).
+
+### 검증·빌드
+- 단위 86/86, 회귀 23/23(CONVERT-NATIVE-MP4를 복사 정리·실패 시 원본 저장으로 갱신), 오디오 20/20, UI 21/21. 빌드 1.1.30 Firefox 41/Chrome 43, 패키지 JS가 소스와 일치.
 
 ## 2026-10-04 Firefox REC 시작 시 소리가 커지는 문제 — 1.1.29
 

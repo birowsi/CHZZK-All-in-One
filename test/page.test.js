@@ -73,7 +73,7 @@ test("XHR 완료 응답 캐시는 GRID 설정 변경을 반영한다", () => {
   const listeners = new Map();
   const target = { XMLHttpRequest: XHR, document: {
     addEventListener(type, fn) { listeners.set(type, fn); }, dispatchEvent() {},
-  }, CustomEvent: class {} };
+  }, CustomEvent: class {}, localStorage: { getItem: () => "false" } };
   install(target);
   const xhr = new XHR();
   xhr.open("GET", "https://api.chzzk.naver.com/service/v3/channels/b33c957eac9335d38e4043c3dca97675/live-detail");
@@ -291,4 +291,18 @@ test("광고 전용 주소만 메타데이터 로딩 뒤 건너뛰고 정상 재
   const live = Object.assign(new Media(), { src: 'https://media.navercdn.com/live/clip.mp4', currentTime: 0, duration: 15 });
   listeners.get('playing')({ target: live });
   assert.equal(live.currentTime, 0);
+});
+
+test("GRID 설정이 도착하기 전 첫 live-detail도 기억된 설정(기본 ON)으로 P2P 정보를 지운다", () => {
+  for (const [stored, cleared] of [[null, true], ["true", true], ["false", false]]) {
+    const XHR = createResponseXHR();
+    const target = { XMLHttpRequest: XHR, document: { addEventListener() {}, dispatchEvent() {} }, CustomEvent: class {},
+      localStorage: { getItem: (key) => key === "hanbi_grid_bypass" ? stored : null } };
+    install(target);
+    const xhr = new XHR();
+    xhr.open("GET", "https://api.chzzk.naver.com/service/v3.3/channels/b33c957eac9335d38e4043c3dca97675/live-detail");
+    xhr.readyState = 4;
+    xhr.body = { content: { p2pQuality: ["1080p"] } };
+    assert.deepEqual(xhr.response.content.p2pQuality, cleared ? [] : ["1080p"]);
+  }
 });

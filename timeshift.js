@@ -219,9 +219,16 @@
       old.hls.off("hlsFragLoaded", old.onFragment);
       return old;
     }
+    // 결과 창이 재인코딩 없이 MP4로 정리할 수 있도록 마스터 재생 목록의 코덱을 MIME에 담는다.
+    function mimeOf(old) {
+      if (old.format === "ts") return "video/mp2t";
+      const level = old.hls.levels?.[old.level];
+      const codecs = [level?.videoCodec, level?.audioCodec].filter((codec) => typeof codec === "string" && /^[\w.]+$/.test(codec));
+      return codecs.length ? `video/mp4; codecs="${codecs.join(",")}"` : "video/mp4";
+    }
     function result(old) {
       if (!old?.format) return null;
-      return { blob: new Blob(old.chunks, { type: old.format === "ts" ? "video/mp2t" : "video/mp4" }), ext: old.format };
+      return { blob: new Blob(old.chunks, { type: mimeOf(old) }), ext: old.format };
     }
     function fail(message) {
       lastError = message;
@@ -286,15 +293,31 @@
     const document = target.document;
     const control = createTimeShift();
     let rawName = "chzzk_raw";
-    const saveRaw = ({ blob, ext }) => {
+    const downloadRaw = ({ blob, ext }, name) => {
       const url = target.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${rawName}.${ext}`;
+      link.download = `${name}.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       target.setTimeout(() => target.URL.revokeObjectURL(url), 60_000);
+    };
+    // RAW 파일은 확장(격리된 콘텐츠 스크립트)으로 넘겨 녹화 결과 창에서 열고 타임스탬프를 정리한다.
+    // 확장이 2초 안에 받았다고 답하지 않으면(확장 갱신 직후 등) 예전처럼 바로 다운로드한다.
+    let rawFileId = 0;
+    const pendingRawFiles = new Map();
+    document.addEventListener("hanbi-raw-file-received", (event) => {
+      const id = Number(event.detail);
+      target.clearTimeout?.(pendingRawFiles.get(id));
+      pendingRawFiles.delete(id);
+    });
+    const saveRaw = (file) => {
+      const name = rawName;
+      if (typeof target.postMessage !== "function") { downloadRaw(file, name); return; }
+      const id = ++rawFileId;
+      pendingRawFiles.set(id, target.setTimeout(() => { pendingRawFiles.delete(id); downloadRaw(file, name); }, 2000));
+      target.postMessage({ type: "hanbi-raw-file", id, blob: file.blob, ext: file.ext, name }, target.location.origin);
     };
     const raw = createRawRecorder((message, partial) => {
       let detail = message;

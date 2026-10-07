@@ -306,18 +306,37 @@ async function main() {
     await convert('trim', { start: 5, end: 4 });
     assert.equal(shown, true);
   });
-  await check('CONVERT-NATIVE-MP4: verified AVC/AAC downloads the original without loading FFmpeg', async () => {
-    const calls = [], busy = [];
-    const convert = func('record-result.js', 'convert', {
-      ...require(path.join(repo, 'record-result-logic.js')),
-      recording: { mimeType: 'video/mp4;codecs=avc1.420028,mp4a.40.2', fileName: 'native' }, recordingUrl: 'blob:original',
-      download: async (...args) => calls.push(args), safeName: name => name,
-      loadFFmpeg: () => { throw new Error('must not encode'); },
-      setStatus() {}, setBusy: value => busy.push(value), progress: { removeAttribute() {} }, progressText: {}, console: quiet,
-    });
-    await convert('mp4');
-    assert.deepEqual(calls, [['blob:original', 'native.mp4']]);
-    assert.deepEqual(busy, [true, false]);
+  await check('CONVERT-NATIVE-MP4: AVC/AAC and RAW TS are copied (no re-encode) with timestamps reset to zero; failure keeps the original', async () => {
+    for (const [mimeType, exitCode, expected] of [
+      ['video/mp4;codecs=avc1.420028,mp4a.40.2', 0, [['blob:fixed', 'native.mp4']]],
+      ['video/mp2t', 0, [['blob:fixed', 'native.mp4']]],
+      ['video/mp4;codecs=avc1.420028,mp4a.40.2', 1, [['blob:original', 'native.mp4']]],
+      ['video/mp2t', 1, [['blob:original', 'native.ts']]],
+    ]) {
+      const calls = [], busy = [], commands = [], written = [];
+      const engine = {
+        listDir: async () => [], deleteFile: async () => {},
+        writeFile: async (name) => written.push(name), readFile: async () => new Uint8Array([1]),
+        exec: async (args) => { commands.push(args); return exitCode; },
+      };
+      const logic = require(path.join(repo, 'record-result-logic.js'));
+      const convert = func('record-result.js', 'convert', {
+        ...logic, Uint8Array, Blob, Date, setInterval, clearInterval,
+        recording: { mimeType, fileName: 'native', blob: { arrayBuffer: async () => new ArrayBuffer(1) } }, recordingUrl: 'blob:original',
+        download: async (...args) => calls.push(args), downloadBlob: async (_, name) => calls.push(['blob:fixed', name]), safeName: name => name,
+        loadFFmpeg: async () => engine, cleanWorkspace: async () => {},
+        inputFileName: (mime) => `input.${/mp2t/.test(mime) ? 'ts' : 'mp4'}`, originalExtension: (mime) => /mp2t/.test(mime) ? 'ts' : 'mp4',
+        setStatus() {}, setBusy: value => busy.push(value), progress: { removeAttribute() {} }, progressText: {}, console: quiet, video: {},
+      });
+      await convert('mp4');
+      assert.equal(JSON.stringify(calls), JSON.stringify(expected));
+      assert.equal(JSON.stringify(busy), '[true,false]');
+      assert.equal(commands.length, 1);
+      assert.ok(!commands[0].includes('libx264'), 'must not re-encode');
+      // Arrays come from the vm context, so compare their JSON form.
+      assert.equal(JSON.stringify(commands[0].slice(commands[0].indexOf('-c'))), JSON.stringify(['-c', 'copy', '-avoid_negative_ts', 'make_zero', '-movflags', '+faststart', 'output-fixed.mp4']));
+      assert.equal(written[0], /mp2t/.test(mimeType) ? 'input.ts' : 'input.mp4');
+    }
   });
   await check('TIMESHIFT-FALLBACK: failed seek must not consume native shortcut', async () => {
     let prevented = false;

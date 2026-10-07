@@ -133,7 +133,13 @@
   function install(target) {
     if (target.__HANBI_CHZZK_PAGE__) return;
     Object.defineProperty(target, "__HANBI_CHZZK_PAGE__", { value: true });
-    let gridEnabled = !target.document;
+    // 설정은 콘텐츠 스크립트가 비동기로 보내 주므로, 첫 live-detail 응답이 먼저 오면 P2P 정보가
+    // 남는다. 그러면 사이트가 P2P 상태 확인에 실패할 때 "라이브 재생 중 문제가 발생했습니다"를 띄운다.
+    // 마지막 설정을 페이지 localStorage에 기억해 시작부터 적용한다(기본 ON).
+    let gridEnabled = true;
+    if (target.document) {
+      try { gridEnabled = target.localStorage?.getItem("hanbi_grid_bypass") !== "false"; } catch (_) {}
+    }
     target.document?.addEventListener('hanbi-playback-settings', event => {
       try { gridEnabled = JSON.parse(event.detail).gridBypass === true; } catch (_) {}
     });

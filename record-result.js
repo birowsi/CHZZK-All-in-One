@@ -1,7 +1,7 @@
 import { FFmpeg } from "./vendor/ffmpeg/wrapper/index.js";
 
 const api = globalThis.browser ?? globalThis.chrome;
-const { conversionSpec, isCompatibleMp4 } = globalThis.HanbiRecorderLogic;
+const { conversionSpec, canRemuxToMp4 } = globalThis.HanbiRecorderLogic;
 const video = document.getElementById("result-video");
 const status = document.getElementById("status");
 const progressWrap = document.getElementById("progress-wrap");
@@ -22,6 +22,14 @@ function setStatus(message, error = false) {
 function setBusy(busy) {
   document.querySelectorAll("button").forEach((button) => { button.disabled = busy || !recording; });
   progressWrap.hidden = !busy;
+}
+
+function originalExtension(mimeType) {
+  return /^video\/mp2t\b/i.test(mimeType || "") ? "ts" : (mimeType || "").includes("mp4") ? "mp4" : "webm";
+}
+
+function inputFileName(mimeType) {
+  return `input.${originalExtension(mimeType)}`;
 }
 
 function safeName(name) {
@@ -62,7 +70,7 @@ async function loadFFmpeg() {
 
 async function cleanWorkspace(engine) {
   for (const entry of await engine.listDir(".")) {
-    if (["input.webm", "input.mp4"].includes(entry.name) || entry.name.startsWith("output")) {
+    if (["input.webm", "input.mp4", "input.ts"].includes(entry.name) || entry.name.startsWith("output")) {
       await engine.deleteFile(entry.name).catch(() => {});
     }
   }
@@ -76,17 +84,13 @@ async function convert(kind, options) {
   setStatus("변환기를 불러오는 중…");
   let ticker = null;
   try {
-    const spec = conversionSpec(kind, options);
-    if (kind === "mp4" && isCompatibleMp4(recording.mimeType)) {
-      const fileName = `${safeName(recording.fileName)}.mp4`;
-      await download(recordingUrl, fileName);
-      setStatus(`MP4 원본을 재인코딩 없이 저장했습니다. 다운로드 폴더의 "${fileName}" 파일입니다.`);
-      return;
-    }
+    // MP4 저장은 가능하면 재인코딩 없이 복사하고 타임스탬프만 0부터 다시 매긴다(빠름, 화질 손실 없음).
+    const remux = kind === "mp4" && canRemuxToMp4(recording.mimeType);
+    const spec = conversionSpec(remux ? "remux" : kind, options);
     const engine = await loadFFmpeg();
     await cleanWorkspace(engine);
     setStatus("브라우저에서 변환 중입니다. 이 탭을 닫지 마세요. 긴 영상은 수 분 이상 걸릴 수 있습니다.");
-    const inputName = recording.mimeType.includes("mp4") ? "input.mp4" : "input.webm";
+    const inputName = inputFileName(recording.mimeType);
     await engine.writeFile(inputName, new Uint8Array(await recording.blob.arrayBuffer()));
     const startedAt = Date.now();
     ticker = setInterval(() => {
@@ -107,6 +111,13 @@ async function convert(kind, options) {
       return;
     }
     const exitCode = await engine.exec(command(spec));
+    if (exitCode !== 0 && remux) {
+      // 복사 정리가 실패해도 원본은 남겨 준다.
+      const fileName = `${safeName(recording.fileName)}.${originalExtension(recording.mimeType)}`;
+      await download(recordingUrl, fileName);
+      setStatus(`타임스탬프 정리에 실패해 원본을 그대로 저장했습니다. 다운로드 폴더의 "${fileName}" 파일입니다.`, true);
+      return;
+    }
     if (exitCode !== 0) throw new Error("변환기가 작업을 완료하지 못했습니다.");
 
     if (spec.split) {
@@ -124,7 +135,9 @@ async function convert(kind, options) {
       const data = await engine.readFile(spec.output);
       const fileName = `${safeName(recording.fileName)}${spec.suffix || ""}.${spec.ext}`;
       await downloadBlob(new Blob([data], { type: spec.mime }), fileName);
-      setStatus(`변환과 다운로드를 완료했습니다. 다운로드 폴더의 "${fileName}" 파일입니다.`);
+      setStatus(remux
+        ? `재인코딩 없이 MP4로 저장했습니다(타임스탬프 0부터 정리). 다운로드 폴더의 "${fileName}" 파일입니다.`
+        : `변환과 다운로드를 완료했습니다. 다운로드 폴더의 "${fileName}" 파일입니다.`);
     }
   } catch (error) {
     console.error("[CHZZK All-in-One recorder]", error);
@@ -136,8 +149,11 @@ async function convert(kind, options) {
 }
 
 document.querySelector("[data-action='original']").addEventListener("click", async () => {
-  const ext = recording.mimeType.includes("mp4") ? "mp4" : "webm";
-  await download(recordingUrl, `${safeName(recording.fileName)}.${ext}`);
+  await download(recordingUrl, `${safeName(recording.fileName)}.${originalExtension(recording.mimeType)}`);
+});
+video.addEventListener("error", () => {
+  // 브라우저는 RAW의 TS 파일을 미리보기로 재생하지 못한다. 변환·저장은 그대로 가능하다.
+  if (/^video\/mp2t\b/i.test(recording?.mimeType || "")) setStatus("TS 형식은 미리보기를 지원하지 않습니다. MP4 버튼으로 재인코딩 없이 MP4로 저장할 수 있습니다.");
 });
 document.querySelectorAll("[data-convert]").forEach((button) => {
   button.addEventListener("click", () => convert(button.dataset.convert));
