@@ -80,8 +80,15 @@
         }
       }
     }
-    function enable(hls, media) {
-      if (active?.hls === hls && active.media === media) { keepPausedBuffering(active); return; }
+    // retain: 방송 진입부터 지난 버퍼만 계속 보관한다(사이트의 LIVE 따라잡기는 그대로).
+    // shift: 사용자가 일시정지·TM 탐색으로 뒤에 머무는 중이라 LIVE 강제 복귀를 막는다.
+    function enable(hls, media, { retain = false, shift = true } = {}) {
+      if (active?.hls === hls && active.media === media) {
+        if (retain) active.retained = true;
+        if (shift) active.shifted = true;
+        keepPausedBuffering(active);
+        return;
+      }
       restore();
       const controller = hls?.streamController;
       if (!hls?.config || typeof controller?.synchronizeToLiveEdge !== "function" || !media) {
@@ -94,9 +101,9 @@
       // hls.js leaves old media in the browser's buffer; Firefox may still evict it under memory pressure.
       const applied = { backBufferLength: Infinity, maxBufferSize: Math.max(original.maxBufferSize, 100_000_000), maxBufferLength: Math.max(original.maxBufferLength, 330), maxMaxBufferLength: Math.max(original.maxMaxBufferLength, 330) };
       const sync = controller.synchronizeToLiveEdge;
-      const state = { hls, media, controller, original, applied, sync, wrapper: null, pausedValues: {} };
+      const state = { hls, media, controller, original, applied, sync, wrapper: null, pausedValues: {}, retained: retain, shifted: shift };
       state.wrapper = function(...args) {
-        if (active === state) {
+        if (active === state && state.shifted) {
           const buffered = media.buffered;
           for (let i = 0; i < buffered.length; i++) {
             if (media.currentTime >= buffered.start(i) && media.currentTime < buffered.end(i)) return;
@@ -180,10 +187,18 @@
         timer = setTimeout(cleanup, 0);
       } catch (error) { cleanup(); console.warn("[CHZZK All-in-One TM] 재개 위치 보호 연결 실패", error); }
     }
+    // 자동 보관 중이면 버퍼는 남기고 LIVE 강제 복귀 차단만 푼다.
+    function release() {
+      if (!active?.retained) { restore(); return; }
+      active.shifted = false;
+      active.resumeCleanup?.();
+    }
     function run(command, hls, media, time) {
       if (active && (active.hls !== hls || active.media !== media)) restore();
       if (command === "status" && active) keepPausedBuffering(active);
       if (command === "restore") restore();
+      else if (command === "release") release();
+      else if (command === "retain") enable(hls, media, { retain: true, shift: false });
       else if (command === "enable") enable(hls, media);
       else if (command === "seek" || command === "live") {
         const ranges = media?.buffered;
@@ -194,15 +209,15 @@
         const live = command === "live" || position >= edge - 1;
         if (!live) enable(hls, media);
         try { media.currentTime = position; } catch (error) { restore(); throw error; }
-        if (live) restore();
+        if (live) release();
       }
       const ranges = media?.buffered;
-      return { ok: true, active: Boolean(active), hlsFound: Boolean(hls),
+      return { ok: true, active: Boolean(active), shifted: Boolean(active?.shifted), hlsFound: Boolean(hls),
         start: ranges?.length ? ranges.start(0) : null,
         end: ranges?.length ? ranges.end(ranges.length - 1) : null,
         currentTime: media?.currentTime ?? null };
     }
-    return { run, restore, resume };
+    return { run, restore, release, resume };
   }
   function createRawRecorder(onError = () => {}) {
     let session = null, lastError = "";
@@ -328,7 +343,7 @@
       document.dispatchEvent(new target.CustomEvent("hanbi-raw-error", { detail }));
     });
     let activePath = target.location.pathname;
-    let initialQualityPlayer = null, manualQuality = false;
+    let initialQualityPlayer = null, manualQuality = false, retainFailed = null;
     document.addEventListener('hanbi-quality-manual', () => { manualQuality = true; });
     const locate = () => {
       const layout = document.getElementById("live_player_layout");
@@ -375,7 +390,7 @@
       let request;
       try {
         request = JSON.parse(event.detail);
-        if (!["enable", "seek", "live", "restore", "status"].includes(request.command)) return;
+        if (!["enable", "seek", "live", "release", "restore", "status"].includes(request.command)) return;
         if (target.location.pathname !== activePath) { control.restore(); activePath = target.location.pathname; initialQualityPlayer = null; manualQuality = false; }
         if (!/^\/live\//.test(activePath)) throw new Error("라이브 페이지에서만 사용할 수 있습니다.");
         const { hls, media, nativeTimeMachine } = locate();
@@ -393,6 +408,12 @@
       const { hls, media, nativeTimeMachine } = locate();
       if (raw.active() && hls && media && !raw.matches(hls, media)) raw.fail("본방송 플레이어가 교체되어 RAW 녹화를 중단했습니다.");
       control.run("status", hls, media);
+      // TM 버튼을 누르기 전부터 지난 장면을 버퍼에 쌓아 둔다. 공식 타임머신 채널은 건드리지 않는다.
+      if (nativeTimeMachine) control.restore();
+      else if (hls && hls !== retainFailed && media?.readyState >= 2) {
+        try { control.run("retain", hls, media); }
+        catch (error) { retainFailed = hls; console.warn("[CHZZK All-in-One TM] 자동 버퍼 보관 연결 실패", error); }
+      }
       if (!nativeTimeMachine && !manualQuality && hls && hls !== initialQualityPlayer && hls.levels?.length && media?.readyState >= 2) {
         const levels = hls.levels.map((level, index) => ({ height: Number(level.height) || 0, bitrate: Number(level.bitrate) || 0, index }));
         levels.sort((a,b) => Number(b.height === 1080) - Number(a.height === 1080) || b.height - a.height || b.bitrate - a.bitrate);

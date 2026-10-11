@@ -1007,7 +1007,7 @@
     const slider = panel.querySelector("input");
     const label = panel.querySelector("p");
     const close = () => {
-      try { timeShift("restore"); } catch (_) {}
+      try { timeShift("release"); } catch (_) {}
       clearInterval(timeMachineTimer); timeMachineTimer = null; panel.remove();
     };
     panel.querySelector("[data-close]").onclick = close;

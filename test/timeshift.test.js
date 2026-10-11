@@ -242,6 +242,42 @@ test("본방송을 실제로 일시정지하면 TM 패널 없이도 버퍼 유�
   assert.equal(hls.config.maxBufferLength, 330);
 });
 
+test("방송 진입부터 TM 없이 지난 버퍼를 보관하되 LIVE 따라잡기는 막지 않는다", () => {
+  const { hls, media, count } = fixture();
+  media.paused = false;
+  media.readyState = 4;
+  media.videoWidth = 1920;
+  media.videoHeight = 1080;
+  media.closest = () => null;
+  const layout = { querySelectorAll: () => [media], _corePlayer: { player: { _mediaController: { _hls: hls } } } };
+  const document = { addEventListener() {}, getElementById: () => layout };
+  let tick;
+  const target = { document, location: { pathname: "/live/a" }, setInterval(fn) { tick = fn; }, addEventListener() {} };
+  install(target);
+  tick();
+  assert.equal(hls.config.backBufferLength, Infinity);
+  hls.streamController.synchronizeToLiveEdge({});
+  assert.equal(count(), 1);
+});
+test("자동 보관 중 TM 탐색은 LIVE 복귀를 막고, LIVE·닫기는 차단만 풀고 버퍼는 남긴다", () => {
+  const { hls, media, count } = fixture();
+  const control = createTimeShift();
+  control.run("retain", hls, media);
+  control.run("seek", hls, media, 60);
+  hls.streamController.synchronizeToLiveEdge({});
+  assert.equal(count(), 0);
+  control.run("live", hls, media);
+  assert.equal(control.run("status", hls, media).shifted, false);
+  assert.equal(hls.config.backBufferLength, Infinity);
+  hls.streamController.synchronizeToLiveEdge({});
+  assert.equal(count(), 1);
+  control.run("seek", hls, media, 60);
+  control.run("release", hls, media);
+  assert.equal(hls.config.backBufferLength, Infinity);
+  control.restore();
+  assert.equal(hls.config.backBufferLength, 20);
+});
+
 test("RAW는 HLS 조각을 다시 인코딩하지 않고 TS/MP4 원본 바이트로 연결한다", async () => {
   const listeners = new Map(), media = {};
   const hls = { media, on(name, fn) { listeners.set(name, fn); }, off(name, fn) { if (listeners.get(name) === fn) listeners.delete(name); } };

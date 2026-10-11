@@ -3,8 +3,8 @@
 ## 최신 작업 위치와 버전
 
 - 기준 저장소: `C:\Users\hanbi\Documents\ChatGPT\치지직\chzzk-all-in-one`. 바깥 `치지직` 폴더의 빈 Git 저장소와 구분한다.
-- 공통 소스·빌드 **1.1.32**(2026-10-08): 커밋 `6c932e9`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.32/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096668/7f27e59867454bfd8439-1.1.32.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.32(latest). 1.1.31(2026-10-08): 커밋 `ac45d39`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.31/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096613/7f27e59867454bfd8439-1.1.31.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.31(latest). 1.1.30(2026-10-08): 커밋 `f62f928`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.30/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096320/7f27e59867454bfd8439-1.1.30.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.30(latest). 1.1.29(2026-10-04): 커밋 `51cd3e2`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.29/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5082340/7f27e59867454bfd8439-1.1.29.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.29(latest). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
-- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.32.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.32/`와 ZIP. dist는 Git에 올리지 않는다.
+- 공통 소스·빌드 **1.1.33**(2026-10-12, 릴리스 진행 중). 1.1.32(2026-10-08): 커밋 `6c932e9`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.32/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096668/7f27e59867454bfd8439-1.1.32.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.32(latest). 1.1.31(2026-10-08): 커밋 `ac45d39`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.31/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096613/7f27e59867454bfd8439-1.1.31.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.31(latest). 1.1.30(2026-10-08): 커밋 `f62f928`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.30/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5096320/7f27e59867454bfd8439-1.1.30.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.30(latest). 1.1.29(2026-10-04): 커밋 `51cd3e2`(main·codex/chrome-compat push), AMO 서명 `dist/signed-v1.1.29/`(다운로드 https://addons.mozilla.org/firefox/downloads/file/5082340/7f27e59867454bfd8439-1.1.29.xpi , AMO 로그인 필요), GitHub 릴리스 v1.1.29(latest). 1.1.28은 커밋 `96de358`·GitHub 릴리스 v1.1.28·AMO 서명 완료. 이전 기록: 1.1.27: 사용자 제안으로 채팅 애니메이션을 "새 메시지만" 방식으로 교체 — 기존 메시지는 즉시 한 칸 올리고, 새로 들어온 메시지(같은 순간 여러 개면 한 덩어리)만 `translateY(새 메시지 높이 합)`→0으로 140ms ease-out 슬라이드. 아래 경계 밖은 목록 overflow가 잘라 주며 scrollHeight는 변하지 않음(정적 페이지 측정). 높이 애니메이션·overflow/flex-shrink 조작은 제거. 이전 1.1.26: 1.1.25 채팅 애니메이션을 사용자 피드백("눈이 아프고 가독성 떨어짐")으로 페이드 제거·120ms(동시 4개 이상 80ms)·ease-out으로 완화. 1.1.24도 미커밋 빌드로 사용자 QA 예정이었음. 커밋·push 여부는 `git status`로 확인). 1.1.23 기준: `main` = `codex/chrome-compat` = `origin/main` = `origin/codex/chrome-compat` = `b087a76` (2026-10-02 사용자가 Windows에서 push). 원격 `https://github.com/birowsi/CHZZK-All-in-One.git`. 이 문서 갱신 커밋은 그 뒤 로컬 커밋이며 push 여부는 `git status`로 확인한다.
+- 빌드 결과: `dist/chzzk-all-in-one-firefox-v1.1.33.zip`/`.xpi`(미서명), `dist/chzzk-all-in-one-chrome-v1.1.33/`와 ZIP. dist는 Git에 올리지 않는다.
 - 아래 날짜별 절의 오래된 HEAD/버전 표기는 각 작업 당시 기록이다.
 
 ## 지금 상태 한눈에 보기 (2026-10-02 기준)
@@ -27,6 +27,14 @@
 - 작업 트리는 CRLF, 저장소는 LF다. 리눅스 셸에서는 `git -c core.autocrlf=true status/add/commit`을 써야 줄바꿈만 다른 파일이 변경으로 잡히지 않는다. 그냥 `git status`를 보면 40여 개 파일이 변경으로 보인다.
 - 이 폴더는 기본적으로 파일 삭제가 막혀 있어 Git이 `.git/index.lock`을 못 지운다. 커밋 전 삭제 권한을 받고 `rm -f .git/index.lock` 한다.
 - `playback-107`은 연결이 끊긴 오래된 1.0.2 worktree(`codex/playback-recovery`)다. 건드리지 않았다.
+
+## 2026-10-12 TM 버퍼를 방송 진입부터 자동 보관 — 1.1.33
+
+- 사용자 요청: TM을 눌러야 버퍼 기록이 시작되는데, 방송 플레이어에 들어갈 때부터 시작되면 좋겠다.
+- 이전 동작: 지난 버퍼 보관(`backBufferLength: Infinity` 등)은 TM 패널을 열거나 재생 중 일시정지할 때만 켜졌고, TM 닫기·LIVE는 원래 설정으로 복원해 hls.js가 지난 버퍼를 다시 지웠다.
+- 수정(`timeshift.js`): 상태에 `retained`(자동 보관)와 `shifted`(사용자가 뒤에 머무는 중)를 나눴다. 1초 점검 루프가 라이브 페이지에서 `readyState >= 2`인 본방송 HLS에 `retain` 명령으로 버퍼 설정만 적용한다. `synchronizeToLiveEdge` 차단은 `shifted`일 때만(일시정지·TM `enable`·과거 `seek`) 동작하므로 평소 시청의 LIVE 따라잡기는 그대로다. LIVE와 TM 닫기(`tools.js`, 새 `release` 명령)는 자동 보관 중이면 `shifted`만 풀고 버퍼 설정은 유지한다. 공식 타임머신 채널은 `restore`하고 건드리지 않는다. 연결 실패한 HLS는 한 번만 경고하고 다시 시도하지 않는다.
+- 보관 길이는 여전히 브라우저 MSE/메모리 한도에 좌우된다(오래된 구간부터 축출).
+- 자동: 단위 89(새 테스트 2개), 회귀/오디오/UI 통과. 실방송 확인 전.
 
 ## 2026-10-08 Firefox 확장 업데이트 후 새로고침 전까지 소리가 커지는 문제 — 1.1.32
 
